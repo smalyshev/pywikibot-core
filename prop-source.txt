@@ -1,0 +1,8 @@
+PREFIX p: <http://www.wikidata.org/prop/>
+PREFIX q: <http://www.wikidata.org/prop/qualifier/>
+PREFIX wikibase: <http://wikiba.se/ontology#>
+SELECT DISTINCT ?pred WHERE {
+  ?s ?p ?st .
+  ?st q:P582 ?t .
+  ?pred wikibase:claim ?p .
+}
