@@ -3,6 +3,7 @@ import pywikibot
 import httplib2
 import urllib
 import json
+import re
 
 # Are we testing or are we for real?
 TEST = False
@@ -22,7 +23,8 @@ else:
     END_TIME = 'P582'
     site = pywikibot.Site("wikidata", "wikidata")
 
-
+LOGPAGE = "User:PreferentialBot/Log/"
+qregex = re.compile('{{Q|(Q\d+)}}')
 repo = site.data_repository()
 
 def get_items(prop):
@@ -44,6 +46,9 @@ SELECT DISTINCT ?s WHERE {
   FILTER(!bound(?d))
 } LIMIT 10
 """
+# Query asks for items with normal-ranked statement with start date
+# and no end date, more than one statement on the same property
+# and not date of death for this item
     dquery = SPARQL + urllib.quote(QUERY % (prop, prop))
 
     h = httplib2.Http(".cache")
@@ -63,6 +68,17 @@ SELECT DISTINCT ?s WHERE {
         for r in data['results']['bindings']:
             items.append(r['s']['value'][31:])
     return items
+
+def load_page(page):
+    return set(qregex.findall(page.text))
+
+def log_item(page, item, reason):
+    if page.text.find(item+"}}") != -1:
+        # already there
+        return
+    page.text = page.text.strip() + "\n* {{Q|%s}} %s" % (item, reason)
+    page.modifiedByBot = True
+    pass
 
 """
 Test entities for P6:
@@ -93,8 +109,15 @@ for prop in props:
         items = [u"Q826"]
     else:
         items = get_items(prop)
+    logpage = pywikibot.Page(site, LOGPAGE+prop)
+    logpage.modifiedByBot = False
+    baditems = load_page(logpage)
     print "Property %s items %s" % (prop, items)
     for itemID in items:
+        if itemID in baditems:
+            print "Known bad item %s, skip" % itemID
+            continue
+
         item = pywikibot.ItemPage(repo, itemID)
         item.get()
 
@@ -115,16 +138,24 @@ for prop in props:
 
         bestRanked = []
         for statement in item.claims[prop]:
-            if START_TIME not in statement.qualifiers or len(statement.qualifiers[START_TIME])>1:
+            if START_TIME not in statement.qualifiers:
+                if END_TIME in statement.qualifiers and statement.qualifiers[END_TIME][0].getSnakType() != 'novalue':
+                    # has end time, then allow not to have start time
+                    continue
                 # no start or more than one start - this one is weird
+                log_item(logpage, itemID, "Missing start qualifier")
+                break
+            if len(statement.qualifiers[START_TIME])>1:
+                log_item(logpage, itemID, "Multiple start qualifiers")
                 break
             if END_TIME in statement.qualifiers:
                 if len(statement.qualifiers[END_TIME])>1:
+                    log_item(logpage, itemID, "Multiple end qualifiers")
                     # more than one end - weird, skip it
                     break
                 q = statement.qualifiers[END_TIME][0]
                 if q.getSnakType() != 'novalue':
-                    # skip those that have values
+                    # skip those that have end values - these are not preferred ones
                     continue
             # has start but no end - that's what we're looking for
             if statement.rank == 'normal':
@@ -132,7 +163,11 @@ for prop in props:
 
         if(len(bestRanked) > 1):
             print "Multiple bests on %s:%s, skip for now" % (itemID, prop)
+            log_item(logpage, itemID, "Multiple best statements")
             continue
         for statement in bestRanked:
             print "Marking %s on %s:%s as preferred " % (statement.snak, itemID, prop)
             result = statement.changeRank('preferred')
+    if logpage.modifiedByBot:
+        logpage.save("log for "+prop)
+
