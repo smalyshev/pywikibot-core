@@ -7,6 +7,7 @@ import re
 
 # Are we testing or are we for real?
 TEST = False
+COMMIT = True
 """
 This bot does the following:
 for the specified set of items, for properties that
@@ -17,23 +18,26 @@ if TEST:
     site = pywikibot.Site("test", "wikidata")
     START_TIME = 'P355'
     END_TIME = 'P356'
+    DEATH_DATE = 'P570'
     props = ['P141']
 else:
     START_TIME = 'P580'
     END_TIME = 'P582'
+    DEATH_DATE = 'P570'
     site = pywikibot.Site("wikidata", "wikidata")
 
 LOGPAGE = "User:PreferentialBot/Log/"
 qregex = re.compile('{{Q|(Q\d+)}}')
 repo = site.data_repository()
 
-def get_items(prop):
+def get_items(prop, bad_ids=[]):
     SPARQL = "http://wdqs-beta.wmflabs.org/bigdata/namespace/wdq/sparql?query="
     QUERY = """
 PREFIX p: <http://www.wikidata.org/prop/>
 PREFIX q: <http://www.wikidata.org/prop/qualifier/>
 PREFIX wikibase: <http://wikiba.se/ontology#>
 PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+prefix wd: <http://www.wikidata.org/entity/>
 SELECT DISTINCT ?s WHERE {
   ?s p:%s ?st .
   ?st q:P580 ?t .
@@ -44,12 +48,18 @@ SELECT DISTINCT ?s WHERE {
   FILTER(?st2 != ?st)
   OPTIONAL { ?s wdt:P570 ?d }
   FILTER(!bound(?d))
+  %s
 } LIMIT 10
 """
 # Query asks for items with normal-ranked statement with start date
 # and no end date, more than one statement on the same property
 # and not date of death for this item
-    dquery = SPARQL + urllib.quote(QUERY % (prop, prop))
+    if len(bad_ids) > 0:
+        id_filter = "FILTER NOT EXISTS { VALUES ?s { %s } }" % ' '.join(["wd:"+q for q in bad_ids if q ])
+    else:
+        id_filter = ''
+
+    dquery = SPARQL + urllib.quote(QUERY % (prop, prop, id_filter))
 
     print dquery
 
@@ -75,6 +85,7 @@ def load_page(page):
     return set(qregex.findall(page.text))
 
 def log_item(page, item, reason):
+    print "%s on %s" %(reason, item)
     if page.text.find(item+"}}") != -1:
         # already there
         return
@@ -96,7 +107,12 @@ wd:Q2948
 wd:Q3936
 """
 """
+Not running because of timeouts:
+P26: spouse
+"""
+"""
 P6: head of government
+P17: country
 P35: head of state
 P39: position held
 P176: manufacturer
@@ -104,16 +120,16 @@ P488: chairperson
 P598: commander of
 """
 if not TEST:
-    props = [ 'P6', 'P35', 'P39', 'P176',  'P488', 'P598']
+    props = [ 'P6', 'P17', 'P35', 'P39', 'P176',  'P488', 'P598']
 
 for prop in props:
-    if TEST:
-        items = [u"Q826"]
-    else:
-        items = get_items(prop)
     logpage = pywikibot.Page(site, LOGPAGE+prop)
     logpage.modifiedByBot = False
     baditems = load_page(logpage)
+    if TEST:
+        items = [u"Q826"]
+    else:
+        items = get_items(prop, baditems)
     print "Property %s items %s" % (prop, items)
     for itemID in items:
         if itemID in baditems:
@@ -139,6 +155,10 @@ for prop in props:
                 break
         if foundPreferred:
             print "Already have preference for %s on %s, skip" % (prop, itemID)
+            continue
+
+        if DEATH_DATE in item.claims:
+            log_item(logpage, itemID, "Death date specified")
             continue
 
         bestRanked = []
@@ -172,7 +192,8 @@ for prop in props:
             continue
         for statement in bestRanked:
             print "Marking %s on %s:%s as preferred " % (statement.snak, itemID, prop)
-            result = statement.changeRank('preferred')
+            if COMMIT:
+                result = statement.changeRank('preferred')
     if logpage.modifiedByBot:
         logpage.save("log for "+prop)
 
