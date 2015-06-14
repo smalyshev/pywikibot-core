@@ -28,7 +28,6 @@ qregex = re.compile('{{Q|(Q\d+)}}')
 repo = site.data_repository()
 
 def get_items(prop):
-    return ['Q41329']
     SPARQL = "http://wdqs-beta.wmflabs.org/bigdata/namespace/wdq/sparql?query="
     QUERY = """
 PREFIX p: <http://www.wikidata.org/prop/>
@@ -51,6 +50,8 @@ SELECT DISTINCT ?s WHERE {
 # and no end date, more than one statement on the same property
 # and not date of death for this item
     dquery = SPARQL + urllib.quote(QUERY % (prop, prop))
+
+    print dquery
 
     h = httplib2.Http(".cache")
     (resp, content) = h.request(dquery,
@@ -103,7 +104,7 @@ P488: chairperson
 P598: commander of
 """
 if not TEST:
-    props = [ 'P6']#, 'P35', 'P39', 'P176',  'P488', 'P598']
+    props = [ 'P6', 'P35', 'P39', 'P176',  'P488', 'P598']
 
 for prop in props:
     if TEST:
