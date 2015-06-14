@@ -122,10 +122,12 @@ for prop in props:
         item.get()
 
         if prop not in item.claims:
+            print "Hmm, no %s for %s" % (prop, itemID)
             continue
 
         if len(item.claims[prop]) < 2:
             # if there are less than two, no reason to bother
+            print "Sole %s for %s, don't bother" % (prop, itemID)
             continue
         foundPreferred = False
         for statement in item.claims[prop]:
@@ -134,6 +136,7 @@ for prop in props:
                 foundPreferred = True
                 break
         if foundPreferred:
+            print "Already have preference for %s on %s, skip" % (prop, itemID)
             break
 
         bestRanked = []
