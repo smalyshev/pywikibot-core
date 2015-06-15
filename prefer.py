@@ -174,17 +174,20 @@ for prop in props:
                     continue
                 # no start or more than one start - this one is weird
                 log_item(logpage, itemID, "Missing start qualifier")
+                bestRanked = []
                 break
             if len(statement.qualifiers[START_TIME])>1:
                 if END_TIME in statement.qualifiers and len(statement.qualifiers[START_TIME]) == len(statement.qualifiers[END_TIME]):
                     # multi matching start-ends are ok
                     continue
                 log_item(logpage, itemID, "Multiple start qualifiers")
+                bestRanked = []
                 break
             if END_TIME in statement.qualifiers:
                 if len(statement.qualifiers[END_TIME])>1:
                     log_item(logpage, itemID, "Multiple end qualifiers")
                     # more than one end - weird, skip it
+                    bestRanked = []
                     break
                 q = statement.qualifiers[END_TIME][0]
                 if q.getSnakType() != 'novalue':
