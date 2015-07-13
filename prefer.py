@@ -123,12 +123,13 @@ P6: head of government
 P17: country
 P35: head of state
 P36: capital
+P102: member of political party
 P176: manufacturer
 P488: chairperson
 P598: commander of
 """
 if not TEST:
-    props = [ 'P6', 'P17', 'P35', 'P36', 'P176',  'P488', 'P598']
+    props = [ 'P6', 'P17', 'P35', 'P36', 'P176',  'P488', 'P598', 'P26', 'P102']
 
 for prop in props:
     logpage = pywikibot.Page(site, LOGPAGE+prop)
