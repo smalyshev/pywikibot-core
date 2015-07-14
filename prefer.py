@@ -109,10 +109,7 @@ wd:Q3936
 """
 Not running because of timeouts:
 P26: spouse
-"""
-"""
-Removed as not unique
-P39: position held
+P102: member of political party
 """
 """
 Too many bad entries:
@@ -124,15 +121,18 @@ P17: country
 P35: head of state
 P36: capital
 P94: coat of arms image
-P102: member of political party
 P115: home venue
 P118: league
+P123: publisher
+P131: located in the administrative territorial entity
+P137: operator
+P138: named after
 P176: manufacturer
 P488: chairperson
 P598: commander of
 """
 if not TEST:
-    props = [ 'P6', 'P17', 'P35', 'P36', 'P94', 'P102', 'P115', 'P118', 'P176',  'P488', 'P598',  ]
+    props = [ 'P6', 'P17', 'P35', 'P36', 'P94', 'P115', 'P118', 'P123', 'P131', 'P137', 'P138', 'P176', 'P488', 'P598',  ]
 
 for prop in props:
     logpage = pywikibot.Page(site, LOGPAGE+prop)
