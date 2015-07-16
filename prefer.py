@@ -114,6 +114,7 @@ P102: member of political party
 """
 Too many bad entries:
 P54: member of the sports team
+P131: located in the administrative territorial entity
 """
 """
 P6: head of government
@@ -124,20 +125,24 @@ P94: coat of arms image
 P115: home venue
 P118: league
 P123: publisher
-P131: located in the administrative territorial entity
 P137: operator
 P138: named after
+P154: logo image
+P159: headquarters location
+P169: chief executive officer
 P176: manufacturer
 P488: chairperson
 P598: commander of
 """
 if not TEST:
-    props = [ 'P6', 'P17', 'P35', 'P36', 'P94', 'P115', 'P118', 'P123', 'P131', 'P137', 'P138', 'P176', 'P488', 'P598',  ]
+    props = [ 'P6', 'P17', 'P35', 'P36', 'P94', 'P115', 'P118', 'P123', 'P137', 'P138', 'P154', 'P159', 'P169', 'P176', 'P488', 'P598',  ]
 
 for prop in props:
     logpage = pywikibot.Page(site, LOGPAGE+prop)
     logpage.modifiedByBot = False
     baditems = load_page(logpage)
+    if len(baditems) > 30:
+        print "Too many bad items for %s, skipping" % prop
     if TEST:
         items = [u"Q826"]
     else:
