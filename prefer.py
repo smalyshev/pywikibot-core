@@ -31,7 +31,7 @@ qregex = re.compile('{{Q|(Q\d+)}}')
 repo = site.data_repository()
 
 def get_items(prop, bad_ids=[]):
-    SPARQL = "http://wdqs-beta.wmflabs.org/bigdata/namespace/wdq/sparql?query="
+    SPARQL = "http://query.wikidata.org/bigdata/namespace/wdq/sparql?query="
     QUERY = """
 PREFIX p: <http://www.wikidata.org/prop/>
 PREFIX q: <http://www.wikidata.org/prop/qualifier/>
