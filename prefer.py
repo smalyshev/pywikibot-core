@@ -113,13 +113,13 @@ Not running because of timeouts:
 """
 Too many bad entries:
 P54: member of the sports team
+P102: member of political party
 P131: located in the administrative territorial entity
 """
 """
-P26: spouse
-P102: member of political party
 P6: head of government
 P17: country
+P26: spouse
 P35: head of state
 P36: capital
 P94: coat of arms image
@@ -139,7 +139,7 @@ P488: chairperson
 P598: commander of
 """
 if not TEST:
-    props = [ 'P26', 'P102', 'P6', 'P17', 'P35', 'P36', 'P94', 'P115', 'P118', 'P123', 'P137', 'P138', 'P154', 'P159', 'P169', 'P176', 'P195',
+    props = [ 'P26', 'P6', 'P17', 'P35', 'P36', 'P94', 'P115', 'P118', 'P123', 'P137', 'P138', 'P154', 'P159', 'P169', 'P176', 'P195',
              'P286', 'P289', 'P488', 'P598',
     ]
 
