@@ -544,7 +544,7 @@ class WbMonolingualText(object):
     """A Wikibase monolingual text representation."""
 
     def __init__(self, text, language):
-        u"""
+        """
         Create a new WbMonolingualText object.
 
         @param text: number representing this quantity
