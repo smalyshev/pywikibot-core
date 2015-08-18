@@ -540,6 +540,50 @@ class WbQuantity(object):
         return (u"WbQuantity(amount=%(amount)s, upperBound=%(upperBound)s, "
                 u"lowerBound=%(lowerBound)s, unit=%(unit)s)" % self.__dict__)
 
+class WbMonolingualText(object):
+    """A Wikibase monolingual text representation."""
+
+    def __init__(self, text, language):
+        u"""
+        Create a new WbMonolingualText object.
+
+        @param text: number representing this quantity
+        @type text: string
+        @param language: not used (only unit-less quantities are supported)
+        @type text: string
+        """
+        self.text = text
+        self.language = language
+
+    def toWikibase(self):
+        """
+        Convert the data to a JSON object for the Wikibase API.
+
+        @return: dict
+        """
+        json = {'text': self.text,
+                'language': self.language
+                }
+        return json
+
+    @classmethod
+    def fromWikibase(cls, wb):
+        """
+        Create a WbMonolingualText from the JSON data given by the Wikibase API.
+
+        @param wb: Wikibase JSON
+        """
+        return cls(wb['text'], wb['language'])
+
+    def __str__(self):
+        return json.dumps(self.toWikibase(), indent=4, sort_keys=True,
+                          separators=(',', ': '))
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    def __repr__(self):
+        return (u"WbMonolingualText(text=%(text)s, language=%(language)s)" % self.__dict__)
 
 class WbMonolingualText(object):
 
