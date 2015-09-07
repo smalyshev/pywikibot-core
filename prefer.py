@@ -126,7 +126,6 @@ P94: coat of arms image
 P115: home venue
 P118: league
 P123: publisher
-P137: operator
 P138: named after
 P154: logo image
 P159: headquarters location
@@ -135,11 +134,12 @@ P176: manufacturer
 P195: collection
 P286: head coach
 P289: vessel class
+P449: original network
 P488: chairperson
 P598: commander of
 """
 if not TEST:
-    props = [ 'P26', 'P6', 'P17', 'P35', 'P36', 'P94', 'P115', 'P118', 'P123', 'P137', 'P138', 'P154', 'P159', 'P169', 'P176', 'P195',
+    props = [ 'P449', 'P26', 'P6', 'P17', 'P35', 'P36', 'P94', 'P115', 'P118', 'P123', 'P138', 'P154', 'P159', 'P169', 'P176', 'P195',
              'P286', 'P289', 'P488', 'P598',
     ]
 
