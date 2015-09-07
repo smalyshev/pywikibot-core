@@ -135,12 +135,15 @@ P195: collection
 P286: head coach
 P289: vessel class
 P449: original network
+P484: IMA Number, broad sense
 P488: chairperson
+P551: residence
+P579: IMA status and/or rank
 P598: commander of
 """
 if not TEST:
-    props = [ 'P449', 'P26', 'P6', 'P17', 'P35', 'P36', 'P94', 'P115', 'P118', 'P123', 'P138', 'P154', 'P159', 'P169', 'P176', 'P195',
-             'P286', 'P289', 'P488', 'P598',
+    props = [ 'P26', 'P6', 'P17', 'P35', 'P36', 'P94', 'P115', 'P118', 'P123', 'P138', 'P154', 'P159', 'P169', 'P176', 'P195',
+             'P286', 'P289', 'P449', 'P484', 'P488', 'P551', 'P579', 'P598', 
     ]
 
 for prop in props:
