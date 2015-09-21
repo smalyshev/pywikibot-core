@@ -5,7 +5,7 @@
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 
@@ -14,18 +14,16 @@ import functools
 import os
 import re
 
-try:
-    import mwparserfromhell
-except ImportError as e:
-    mwparserfromhell = e
-
 import pywikibot
 import pywikibot.textlib as textlib
 
 from pywikibot import config, UnknownSite
+from pywikibot.site import _IWEntry
 from pywikibot.tools import OrderedDict
 
-from tests.aspects import unittest, TestCase, DefaultDrySiteTestCase
+from tests.aspects import (
+    unittest, require_modules, TestCase, DefaultDrySiteTestCase,
+)
 
 files = {}
 dirname = os.path.join(os.path.dirname(__file__), "pages")
@@ -107,6 +105,7 @@ class TestFormatInterwiki(TestCase):
     cached = True
 
     def test_interwiki_format(self):
+        """Test formatting interwiki links using Page instances."""
         interwikis = {
             'de': pywikibot.Page(pywikibot.Link('de:German', self.site)),
             'fr': pywikibot.Page(pywikibot.Link('fr:French', self.site))
@@ -126,22 +125,26 @@ class TestFormatCategory(DefaultDrySiteTestCase):
                  % {'LS': config.LS})
 
     def test_category_format_raw(self):
+        """Test formatting categories as strings formatted as links."""
         self.assertEqual(self.catresult,
                          textlib.categoryFormat(['[[Category:Cat1]]',
                                                  '[[Category:Cat2]]'],
                                                 self.site))
 
     def test_category_format_bare(self):
+        """Test formatting categories as strings."""
         self.assertEqual(self.catresult,
                          textlib.categoryFormat(['Cat1', 'Cat2'], self.site))
 
     def test_category_format_Category(self):
+        """Test formatting categories as Category instances."""
         data = [pywikibot.Category(self.site, 'Cat1'),
                 pywikibot.Category(self.site, 'Cat2')]
         self.assertEqual(self.catresult,
                          textlib.categoryFormat(data, self.site))
 
     def test_category_format_Page(self):
+        """Test formatting categories as Page instances."""
         data = [pywikibot.Page(self.site, 'Category:Cat1'),
                 pywikibot.Page(self.site, 'Category:Cat2')]
         self.assertEqual(self.catresult,
@@ -164,11 +167,13 @@ class TestCategoryRearrangement(DefaultDrySiteTestCase):
            % {'LS': config.LS})
 
     def test_standard_links(self):
+        """Test getting and replacing categories."""
         cats = textlib.getCategoryLinks(self.old, site=self.site)
         new = textlib.replaceCategoryLinks(self.old, cats, site=self.site)
         self.assertEqual(self.old, new)
 
     def test_adjoining_links(self):
+        """Test getting and replacing adjacent categories."""
         cats_std = textlib.getCategoryLinks(self.old, site=self.site)
         old = self.old.replace(config.LS, '')
         cats = textlib.getCategoryLinks(old, site=self.site)
@@ -238,6 +243,7 @@ class TestTemplatesInCategory(TestCase):
     cached = True
 
     def test_templates(self):
+        """Test normal templates inside category links."""
         self.site = self.get_site()
         self.assertEqual(textlib.getCategoryLinks(
             '[[Category:{{P1|Foo}}]]', self.site),
@@ -344,11 +350,9 @@ class TestTemplateParams(TestCase):
                                                   ('2', u'd')])),
                                ('b', OrderedDict([('1', 'c')]))])
 
+    @require_modules('mwparserfromhell')
     def test_extract_templates_params_mwpfh(self):
         """Test using mwparserfromhell."""
-        if isinstance(mwparserfromhell, ImportError):
-            raise unittest.SkipTest('mwparserfromhell not available')
-
         func = textlib.extract_templates_and_params_mwpfh
         self._common_results(func)
         self._order_differs(func)
@@ -563,22 +567,22 @@ class TestReplaceLinks(TestCase):
     text = ('Hello [[World]], [[how|are]] [[you#section|you]]? Are [[you]] a '
             '[[bug:1337]]?')
 
-    @staticmethod
-    def _dummy_cache(force=False):
-        pass
-
     @classmethod
     def setUpClass(cls):
+        """Create a fake interwiki cache."""
         super(TestReplaceLinks, cls).setUpClass()
-        # make APISite.interwiki work, as long as it doesn't call
-        # _cache_interwikimap with force=True
+        # make APISite.interwiki work and prevent it from doing requests
         for site in cls.sites.values():
-            site['site']._cache_interwikimap = cls._dummy_cache
-            site['site']._iw_sites = dict((iw['family'], (iw['site'], True))
-                                          for iw in cls.sites.values())
-            site['site']._iw_sites['bug'] = (UnknownSite('Not a wiki'),
-                                             False)
-            site['site']._iw_sites['en'] = (site['site'], True)
+            mapping = {}
+            for iw in cls.sites.values():
+                mapping[iw['family']] = _IWEntry(True, 'invalid')
+                mapping[iw['family']]._site = iw['site']
+            mapping['bug'] = _IWEntry(False, 'invalid')
+            mapping['bug']._site = UnknownSite('Not a wiki')
+            mapping['en'] = _IWEntry(True, 'invalid')
+            mapping['en']._site = site['site']
+            site['site']._interwikimap._map = mapping
+            site['site']._interwikimap._site = None  # prevent it from loading
         cls.wp_site = cls.get_site('wp')
 
     def test_replacements_function(self):
@@ -797,6 +801,7 @@ class TestLocalDigits(TestCase):
     net = False
 
     def test_to_local(self):
+        """Test converting Arabic digits to local digits."""
         self.assertEqual(textlib.to_local_digits(299792458, 'en'), 299792458)
         self.assertEqual(
             textlib.to_local_digits(299792458, 'fa'), u"۲۹۹۷۹۲۴۵۸")
@@ -813,11 +818,13 @@ class TestReplaceExcept(DefaultDrySiteTestCase):
     """Test to verify the replacements with exceptions are done correctly."""
 
     def test_no_replace(self):
+        """Test replacing when the old text does not match."""
         self.assertEqual(textlib.replaceExcept('12345678', 'x', 'y', [],
                                                site=self.site),
                          '12345678')
 
     def test_simple_replace(self):
+        """Test replacing without regex."""
         self.assertEqual(textlib.replaceExcept('AxB', 'x', 'y', [],
                                                site=self.site),
                          'AyB')
@@ -829,6 +836,7 @@ class TestReplaceExcept(DefaultDrySiteTestCase):
                          'AyyyB')
 
     def test_regex_replace(self):
+        """Test replacing with a regex."""
         self.assertEqual(textlib.replaceExcept('A123B', r'\d', r'x', [],
                                                site=self.site),
                          'AxxxB')
@@ -867,6 +875,7 @@ class TestReplaceExcept(DefaultDrySiteTestCase):
             'A1x3B')
 
     def test_case_sensitive(self):
+        """Test replacing with different case sensitivity."""
         self.assertEqual(textlib.replaceExcept('AxB', 'x', 'y', [],
                                                caseInsensitive=False,
                                                site=self.site),
@@ -885,6 +894,7 @@ class TestReplaceExcept(DefaultDrySiteTestCase):
                          'AyB')
 
     def test_replace_with_marker(self):
+        """Test replacing with a marker."""
         self.assertEqual(textlib.replaceExcept('AxyxB', 'x', 'y', [],
                                                marker='.',
                                                site=self.site),
@@ -895,6 +905,7 @@ class TestReplaceExcept(DefaultDrySiteTestCase):
                          'AxyxB.')
 
     def test_overlapping_replace(self):
+        """Test replacing with and without overlap."""
         self.assertEqual(textlib.replaceExcept('1111', '11', '21', [],
                                                allowoverlap=False,
                                                site=self.site),
@@ -905,6 +916,7 @@ class TestReplaceExcept(DefaultDrySiteTestCase):
                          '2221')
 
     def test_replace_exception(self):
+        """Test replacing not inside a specific regex."""
         self.assertEqual(textlib.replaceExcept('123x123', '123', '000', [],
                                                site=self.site),
                          '000x000')
@@ -914,6 +926,7 @@ class TestReplaceExcept(DefaultDrySiteTestCase):
                          '000x123')
 
     def test_replace_tags(self):
+        """Test replacing not inside various tags."""
         self.assertEqual(textlib.replaceExcept('A <!-- x --> B', 'x', 'y',
                                                ['comment'], site=self.site),
                          'A <!-- x --> B')
@@ -977,6 +990,7 @@ class TestReplaceExcept(DefaultDrySiteTestCase):
                              '[[%s:x]]' % ns_name)
 
     def test_replace_tags_interwiki(self):
+        """Test replacing not inside interwiki links."""
         if 'es' not in self.site.family.langs or 'ey' in self.site.family.langs:
             raise unittest.SkipTest('family %s doesnt have languages'
                                     % self.site)
@@ -989,6 +1003,7 @@ class TestReplaceExcept(DefaultDrySiteTestCase):
                          '[[ey:y]]')  # "ex" is not a valid interwiki code
 
     def test_replace_template(self):
+        """Test replacing not inside templates."""
         template_sample = (r'a {{templatename '
                            r'    | accessdate={{Fecha|1993}} '
                            r'    |atitle=The [[real title]] }}')

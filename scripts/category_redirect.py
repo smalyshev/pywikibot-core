@@ -27,7 +27,7 @@ Usage:
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 #
@@ -84,6 +84,7 @@ class CategoryRedirectBot(pywikibot.Bot):
             'pl': "Kategoria:Przekierowania kategorii",
             'pt': "Categoria:!Redirecionamentos de categorias",
             'ru': "Категория:Википедия:Категории-дубликаты",
+            'sco': "Category:Wikipaedia soft redirectit categories",
             'simple': "Category:Category redirects",
             'sh': u"Kategorija:Preusmjerene kategorije Wikipedije",
             'vi': u"Thể loại:Thể loại đổi hướng",

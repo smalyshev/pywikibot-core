@@ -6,7 +6,7 @@
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 __version__ = '$Id$'
 
 import codecs
@@ -161,7 +161,7 @@ def get_site_and_lang(default_family='wikipedia', default_lang='en',
     return fam.name, mylang, username
 
 EXTENDED_CONFIG = u"""# -*- coding: utf-8  -*-
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 # This is an automatically generated file. You can find more configuration
 # parameters in 'config.py' file.
@@ -208,7 +208,7 @@ mylang = '{main_lang}'
 {config_text}"""
 
 SMALL_CONFIG = (u"# -*- coding: utf-8  -*-\n"
-                u"from __future__ import unicode_literals\n"
+                u"from __future__ import absolute_import, unicode_literals\n"
                 u"family = '{main_family}'\n"
                 u"mylang = '{main_lang}'\n"
                 u"{usernames}\n")
@@ -343,25 +343,27 @@ def main(*args):
     """
     global base_dir
 
-    default_args = (config.family, config.mylang, None)
+    # set the config family and mylang values to an invalid state so that
+    # the script can detect that the command line arguments -family & -lang
+    # were used and and handle_args has updated these config values,
+    # and 'force' mode can be activated below.
+    (config.family, config.mylang) = ('wikipedia', None)
 
     local_args = pywikibot.handle_args(args)
     if local_args:
         pywikibot.output('Unknown arguments: %s' % ' '.join(local_args))
         return False
 
-    username = config.usernames[config.family].get(config.mylang)
-    args = (config.family, config.mylang, username)
-
-    if args != default_args:
+    if config.mylang is not None:
         force = True
         pywikibot.output(u'Automatically generating user-config.py')
     else:
         force = False
+        # Force default site of en.wikipedia
+        (config.family, config.mylang) = ('wikipedia', 'en')
 
-    # Force default
-    if config.family == 'wikipedia' and config.mylang == 'language':
-        args = ('wikipedia', 'en', username)
+    username = config.usernames[config.family].get(config.mylang)
+    args = (config.family, config.mylang, username)
 
     while not force or config.verbose_output:
         pywikibot.output(u'\nYour default user directory is "%s"' % base_dir)

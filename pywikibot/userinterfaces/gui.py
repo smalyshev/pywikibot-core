@@ -4,7 +4,7 @@ A window with a unicode textfield where the user can edit.
 
 Useful for editing the contents of an article.
 """
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 #
 # (C) Rob W.W. Hooft, 2003
@@ -32,6 +32,8 @@ from idlelib.configHandler import idleConf
 from idlelib.MultiCall import MultiCallCreator
 
 import pywikibot
+
+from pywikibot import __url__
 
 
 class TextEditor(ScrolledText):
@@ -397,7 +399,7 @@ class EditBoxWindow(Tkinter.Frame):
 
 
 # the following class isn't used anywhere in the framework: ####
-class ListBoxWindow:
+class ListBoxWindow(object):
 
     """List box window."""
 
@@ -444,7 +446,7 @@ class ListBoxWindow:
         return self.list
 
 
-class Tkdialog:
+class Tkdialog(object):
 
     """The dialog window for image info."""
 
@@ -517,8 +519,7 @@ class Tkdialog:
         except ImportError:
             pywikibot.warning('This script requires ImageTk from the'
                               'Python Imaging Library (PIL).\n'
-                              'See: https://www.mediawiki.org/wiki/'
-                              'Manual:Pywikibot/flickrripper.py')
+                              'See: {0}/flickrripper.py'.format(__url__))
             raise
 
         image = Image.open(photo)

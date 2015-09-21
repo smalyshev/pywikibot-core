@@ -17,7 +17,8 @@ the -include option.
 
 Specific arguments:
 
--start:xxx      Specify the text that marks the beginning of a page
+-begin:xxx      Specify the text that marks the beginning of a page
+-start:xxx      (deprecated)
 -end:xxx        Specify the text that marks the end of a page
 -file:xxx       Give the filename we are getting our material from
                 (default: dict.txt)
@@ -39,6 +40,8 @@ Specific arguments:
 -autosummary    Use MediaWikis autosummary when creating a new page,
                 overrides -summary in this case
 -minor          set minor edit flag on page edits
+-showdiff       show difference between page and page to upload; it forces
+                -always=False; default to False.
 
 If the page to be uploaded already exists:
 
@@ -54,11 +57,11 @@ character.
 """
 #
 # (C) Andre Engels, 2004
-# (C) Pywikibot team, 2005-2014
+# (C) Pywikibot team, 2005-2015
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 #
@@ -66,9 +69,11 @@ __version__ = '$Id$'
 import os
 import re
 import codecs
+from warnings import warn
 
 import pywikibot
 from pywikibot import config, Bot, i18n
+from pywikibot.exceptions import ArgumentDeprecationWarning
 
 
 class NoTitle(Exception):
@@ -99,10 +104,13 @@ class PageFromFileRobot(Bot):
             'minor': False,
             'autosummary': False,
             'nocontent': '',
-            'redirect': True
+            'redirect': True,
+            'showdiff': False,
         })
 
         super(PageFromFileRobot, self).__init__(**kwargs)
+        self.availableOptions.update(
+            {'always': False if self.getOption('showdiff') else True})
         self.reader = reader
 
     def run(self):
@@ -171,11 +179,11 @@ class PageFromFileRobot(Bot):
         self.userPut(page, page.text, contents,
                      summary=comment,
                      minor=self.getOption('minor'),
-                     show_diff=False,
+                     show_diff=self.getOption('showdiff'),
                      ignore_save_related_errors=True)
 
 
-class PageFromFileReader:
+class PageFromFileReader(object):
 
     """
     Responsible for reading the file.
@@ -278,8 +286,13 @@ def main(*args):
     notitle = False
 
     for arg in pywikibot.handle_args(args):
-        if arg.startswith("-start:"):
+        if arg.startswith('-start:'):
             pageStartMarker = arg[7:]
+            warn('-start param (text that marks the beginning) of a page has been '
+                 'deprecated in favor of begin; make sure to use the updated param.',
+                 ArgumentDeprecationWarning)
+        elif arg.startswith('-begin:'):
+            pageStartMarker = arg[len('-begin:'):]
         elif arg.startswith("-end:"):
             pageEndMarker = arg[5:]
         elif arg.startswith("-file:"):
@@ -311,6 +324,8 @@ def main(*args):
             options['summary'] = arg[9:]
         elif arg == '-autosummary':
             options['autosummary'] = True
+        elif arg == '-showdiff':
+            options['showdiff'] = True
         else:
             pywikibot.output(u"Disregarding unknown argument %s." % arg)
 

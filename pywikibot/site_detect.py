@@ -5,46 +5,29 @@
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 #
 
 import json
 import re
-import sys
 
-from collections import defaultdict
-from distutils.version import LooseVersion as V
+import pywikibot
 
-from pywikibot.tools import PY2
+from pywikibot.comms.http import fetch
+from pywikibot.exceptions import ServerError
+from pywikibot.tools import MediaWikiVersion, PY2, PYTHON_VERSION
 
 if not PY2:
     from html.parser import HTMLParser
-    from urllib.parse import urljoin
-    from urllib.error import HTTPError
-    import urllib.request as urllib2
+    from urllib.parse import urljoin, urlparse
 else:
-    from HTMLParser import HTMLParser
-    from urlparse import urljoin
-    from urllib2 import HTTPError
-    import urllib2
-
-
-def urlopen(url):
-    req = urllib2.Request(
-        url,
-        headers={'User-agent': 'Pywikibot Family File Generator 2.0'
-                               ' - https://www.mediawiki.org/wiki/Pywikibot'})
-    uo = urllib2.urlopen(req)
     try:
-        if sys.version_info[0] > 2:
-            uo.charset = uo.headers.get_content_charset()
-        else:
-            uo.charset = uo.headers.getfirstmatchingheader('Content-Type')[0].strip().split('charset=')[1]
-    except IndexError:
-        uo.charset = 'latin-1'
-    return uo
+        from future.backports.html.parser import HTMLParser
+    except ImportError:
+        from HTMLParser import HTMLParser
+    from urlparse import urljoin, urlparse
 
 
 class MWSite(object):
@@ -59,90 +42,142 @@ class MWSite(object):
     REwgVersion = re.compile(r'wgVersion ?= ?"([^"]*)"')
 
     def __init__(self, fromurl):
-        self.fromurl = fromurl
+        """
+        Constructor.
+
+        @raises ServerError: a server error occurred while loading the site
+        @raises Timeout: a timeout occurred while loading the site
+        @raises RuntimeError: Version not found or version less than 1.14
+        """
         if fromurl.endswith("$1"):
             fromurl = fromurl[:-2]
-        try:
-            uo = urlopen(fromurl)
-            data = uo.read().decode(uo.charset)
-        except HTTPError as e:
-            if e.code != 404:
-                raise
-            data = e.read().decode('latin-1')  # don't care about mojibake for errors
-            pass
+        r = fetch(fromurl)
+        if r.status == 503:
+            raise ServerError('Service Unavailable')
 
-        wp = WikiHTMLPageParser()
+        if fromurl != r.data.url:
+            pywikibot.log('{0} redirected to {1}'.format(fromurl, r.data.url))
+            fromurl = r.data.url
+
+        self.fromurl = fromurl
+
+        data = r.content
+
+        wp = WikiHTMLPageParser(fromurl)
         wp.feed(data)
-        try:
-            self.version = wp.generator.replace("MediaWiki ", "")
-        except Exception:
-            self.version = "0.0"
 
-        if V(self.version) < V("1.17.0"):
+        self.version = wp.version
+        self.server = wp.server
+        self.scriptpath = wp.scriptpath
+        self.articlepath = None
+
+        try:
             self._parse_pre_117(data)
-        else:
-            self._parse_post_117(wp, fromurl)
+        except Exception as e:
+            pywikibot.log('MW pre-1.17 detection failed: {0!r}'.format(e))
+
+        if self.api:
+            try:
+                self._parse_post_117()
+            except Exception as e:
+                pywikibot.log('MW 1.17+ detection failed: {0!r}'.format(e))
+
+            if not self.version:
+                self._fetch_old_version()
+
+        if not self.api:
+            raise RuntimeError('Unsupported url: {0}'.format(self.fromurl))
+
+        if (not self.version or
+                self.version < MediaWikiVersion('1.14')):
+            raise RuntimeError('Unsupported version: {0}'.format(self.version))
 
     @property
     def langs(self):
-        data = urlopen(
+        """Build interwikimap."""
+        response = fetch(
             self.api +
             "?action=query&meta=siteinfo&siprop=interwikimap&sifilteriw=local&format=json")
-        iw = json.loads(data.read().decode(data.charset))
+        iw = json.loads(response.content)
         if 'error' in iw:
             raise RuntimeError('%s - %s' % (iw['error']['code'],
                                             iw['error']['info']))
-        self.langs = [wiki for wiki in iw['query']['interwikimap']
-                      if u'language' in wiki]
-        return self.langs
+        return [wiki for wiki in iw['query']['interwikimap']
+                if u'language' in wiki]
 
     def _parse_pre_117(self, data):
+        """Parse HTML."""
         if not self.REwgEnableApi.search(data):
-            print("*** WARNING: Api does not seem to be enabled on %s"
-                  % self.fromurl)
+            pywikibot.log(
+                'wgEnableApi is not enabled in HTML of %s'
+                % self.fromurl)
         try:
-            self.version = self.REwgVersion.search(data).groups()[0]
+            self.version = MediaWikiVersion(
+                self.REwgVersion.search(data).group(1))
         except AttributeError:
-            self.version = None
+            pass
 
         self.server = self.REwgServer.search(data).groups()[0]
         self.scriptpath = self.REwgScriptPath.search(data).groups()[0]
         self.articlepath = self.REwgArticlePath.search(data).groups()[0]
         self.lang = self.REwgContentLanguage.search(data).groups()[0]
 
+    def _fetch_old_version(self):
+        """Extract the version from API help with ?version enabled."""
         if self.version is None:
-            # try to get version using api
             try:
-                d = json.load(urlopen(self.api + "?version&format=json"))
-                self.version = filter(
+                d = fetch(self.api + '?version&format=json').content
+                try:
+                    d = json.loads(d)
+                except ValueError:
+                    # Fallback for old versions which didnt wrap help in json
+                    d = {'error': {'*': d}}
+
+                self.version = list(filter(
                     lambda x: x.startswith("MediaWiki"),
                     [l.strip()
-                     for l in d['error']['*'].split("\n")])[0].split()[1]
+                     for l in d['error']['*'].split("\n")]))[0].split()[1]
             except Exception:
                 pass
+            else:
+                self.version = MediaWikiVersion(self.version)
 
-    def _parse_post_117(self, wp, fromurl):
-        apipath = wp.edituri.split("?")[0]
-        fullurl = urljoin(fromurl, apipath)
-        data = urlopen(fullurl + "?action=query&meta=siteinfo&format=json")
-        info = json.loads(data.read().decode(data.charset))['query']['general']
-        self.server = urljoin(fromurl, info['server'])
+    def _parse_post_117(self):
+        """Parse 1.17+ siteinfo data."""
+        response = fetch(self.api + '?action=query&meta=siteinfo&format=json')
+        info = json.loads(response.content)['query']['general']
+        self.version = MediaWikiVersion.from_generator(info['generator'])
+        if self.version < MediaWikiVersion('1.17'):
+            return
+
+        self.server = urljoin(self.fromurl, info['server'])
         for item in ['scriptpath', 'articlepath', 'lang']:
             setattr(self, item, info[item])
 
-    def __cmp__(self, other):
+    def __eq__(self, other):
+        """Return True if equal to other."""
         return (self.server + self.scriptpath ==
                 other.server + other.scriptpath)
 
     def __hash__(self):
+        """Get hashable representation."""
         return hash(self.server + self.scriptpath)
 
     @property
     def api(self):
+        """
+        Get api URL.
+
+        @rtype: str or None
+        """
+        if self.server is None or self.scriptpath is None:
+            return
+
         return self.server + self.scriptpath + "/api.php"
 
     @property
     def iwpath(self):
+        """Get article path URL."""
         return self.server + self.articlepath
 
 
@@ -150,15 +185,85 @@ class WikiHTMLPageParser(HTMLParser):
 
     """Wiki HTML page parser."""
 
-    def __init__(self, *args, **kwargs):
-        HTMLParser.__init__(self, *args, **kwargs)
+    def __init__(self, url):
+        """Constructor."""
+        if PYTHON_VERSION < (3, 4):
+            HTMLParser.__init__(self)
+        else:
+            super().__init__(convert_charrefs=True)
+        self.url = urlparse(url)
         self.generator = None
+        self.version = None
+        self._parsed_url = None
+        self.server = None
+        self.scriptpath = None
+
+    def set_version(self, value):
+        """Set highest version."""
+        if self.version and value < self.version:
+            return
+
+        self.version = value
+
+    def set_api_url(self, url):
+        """Set api_url."""
+        url = url.split('.php', 1)[0]
+        (value, script_name) = url.rsplit('/', 1)
+        if script_name not in ('api', 'load', 'opensearch_desc'):
+            return
+
+        if script_name == 'load':
+            self.set_version(MediaWikiVersion('1.17.0'))
+            if self._parsed_url:
+                # A Resource Loader link is less reliable than other links.
+                # Resource Loader can load resources from a different site.
+                # e.g. http://kino.skripov.com/index.php/$1
+                # loads resources from http://megawiki.net/
+                return
+
+        new_parsed_url = urlparse(value)
+        if self._parsed_url:
+            assert new_parsed_url.path == self._parsed_url.path
+
+        if not new_parsed_url.scheme or not new_parsed_url.netloc:
+            new_parsed_url = urlparse(
+                '{0}://{1}{2}'.format(
+                    new_parsed_url.scheme or self.url.scheme,
+                    new_parsed_url.netloc or self.url.netloc,
+                    new_parsed_url.path))
+        else:
+            if self._parsed_url:
+                # allow upgrades to https, but not downgrades
+                if self._parsed_url.scheme == 'https':
+                    if new_parsed_url.scheme != self._parsed_url.scheme:
+                        return
+
+                # allow http://www.brickwiki.info/ vs http://brickwiki.info/
+                if (new_parsed_url.netloc in self._parsed_url.netloc or
+                        self._parsed_url.netloc in new_parsed_url.netloc):
+                    return
+
+                assert new_parsed_url == self._parsed_url, '{0} != {1}'.format(
+                    self._parsed_url, new_parsed_url)
+
+        self._parsed_url = new_parsed_url
+        self.server = '{0}://{1}'.format(
+            self._parsed_url.scheme, self._parsed_url.netloc)
+        self.scriptpath = self._parsed_url.path
 
     def handle_starttag(self, tag, attrs):
-        attrs = defaultdict(lambda: None, attrs)
+        """Handle an opening tag."""
+        attrs = dict(attrs)
         if tag == "meta":
-            if attrs["name"] == "generator":
+            if attrs.get('name') == 'generator':
                 self.generator = attrs["content"]
-        if tag == "link":
-            if attrs["rel"] == "EditURI":
-                self.edituri = attrs["href"]
+                try:
+                    self.version = MediaWikiVersion.from_generator(
+                        self.generator)
+                except ValueError:
+                    pass
+        elif tag == 'link' and 'rel' in attrs and 'href' in attrs:
+            if attrs['rel'] in ('EditURI', 'stylesheet', 'search'):
+                self.set_api_url(attrs['href'])
+        elif tag == 'script' and 'src' in attrs:
+            self.set_api_url(attrs['src'])

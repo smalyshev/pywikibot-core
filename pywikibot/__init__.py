@@ -1,14 +1,15 @@
 # -*- coding: utf-8  -*-
 """The initialization file for the Pywikibot framework."""
 #
-# (C) Pywikibot team, 2008-2014
+# (C) Pywikibot team, 2008-2015
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __release__ = '2.0b3'
 __version__ = '$Id$'
+__url__ = 'https://www.mediawiki.org/wiki/Special:MyLanguage/Manual:Pywikibot'
 
 import datetime
 import math
@@ -50,7 +51,8 @@ from pywikibot.exceptions import (
     CaptchaError, SpamfilterError, CircularRedirect, InterwikiRedirectPage,
     WikiBaseError, CoordinateGlobeUnknownException,
 )
-from pywikibot.tools import UnicodeMixin, redirect_func
+from pywikibot.tools import PY2, UnicodeMixin, redirect_func
+from pywikibot.tools.formatter import color_format
 from pywikibot.i18n import translate
 from pywikibot.data.api import UploadWarning
 from pywikibot.diff import PatchManager
@@ -65,39 +67,39 @@ textlib_methods = (
     'getCategoryLinks', 'categoryFormat', 'replaceCategoryLinks',
     'removeCategoryLinks', 'removeCategoryLinksAndSeparator',
     'replaceCategoryInPlace', 'compileLinkR', 'extract_templates_and_params',
+    'TimeStripper',
 )
 
-# pep257 doesn't understand when the first entry is on the next line
-__all__ = ('config', 'ui', 'UnicodeMixin', 'translate',
-           'Page', 'FilePage', 'Category', 'Link', 'User',
-           'ItemPage', 'PropertyPage', 'Claim', 'TimeStripper',
-           'html2unicode', 'url2unicode', 'unicode2html',
-           'stdout', 'output', 'warning', 'error', 'critical', 'debug',
-           'exception', 'input_choice', 'input', 'input_yn', 'inputChoice',
-           'handle_args', 'handleArgs', 'showHelp', 'ui', 'log',
-           'calledModuleName', 'Bot', 'CurrentPageBot', 'WikidataBot',
-           'Error', 'InvalidTitle', 'BadTitle', 'NoPage', 'NoMoveTarget',
-           'SectionError',
-           'SiteDefinitionError', 'NoSuchSite', 'UnknownSite', 'UnknownFamily',
-           'UnknownExtension',
-           'NoUsername', 'UserBlocked', 'UserActionRefuse',
-           'PageRelatedError', 'IsRedirectPage', 'IsNotRedirectPage',
-           'PageSaveRelatedError', 'PageNotSaved', 'OtherPageSaveError',
-           'LockedPage', 'CascadeLockedPage', 'LockedNoPage', 'NoCreateError',
-           'EditConflict', 'PageDeletedConflict', 'PageCreatedConflict',
-           'UploadWarning',
-           'ServerError', 'FatalServerError', 'Server504Error',
-           'CaptchaError', 'SpamfilterError', 'CircularRedirect',
-           'InterwikiRedirectPage',
-           'WikiBaseError', 'CoordinateGlobeUnknownException',
-           'QuitKeyboardInterrupt',
-           )
-# flake8 is unable to detect concatenation in the same operation
-# like:
-# ) + textlib_methods
-# pep257 also doesn't support __all__ multiple times in a document
-# so instead use this trick
-globals()['__all__'] = globals()['__all__'] + textlib_methods
+__all__ = (
+    'config', 'ui', 'UnicodeMixin', 'translate',
+    'Page', 'FilePage', 'Category', 'Link', 'User',
+    'ItemPage', 'PropertyPage', 'Claim',
+    'html2unicode', 'url2unicode', 'unicode2html',
+    'stdout', 'output', 'warning', 'error', 'critical', 'debug',
+    'exception', 'input_choice', 'input', 'input_yn', 'inputChoice',
+    'handle_args', 'handleArgs', 'showHelp', 'ui', 'log',
+    'calledModuleName', 'Bot', 'CurrentPageBot', 'WikidataBot',
+    'Error', 'InvalidTitle', 'BadTitle', 'NoPage', 'NoMoveTarget',
+    'SectionError',
+    'SiteDefinitionError', 'NoSuchSite', 'UnknownSite', 'UnknownFamily',
+    'UnknownExtension',
+    'NoUsername', 'UserBlocked', 'UserActionRefuse',
+    'PageRelatedError', 'IsRedirectPage', 'IsNotRedirectPage',
+    'PageSaveRelatedError', 'PageNotSaved', 'OtherPageSaveError',
+    'LockedPage', 'CascadeLockedPage', 'LockedNoPage', 'NoCreateError',
+    'EditConflict', 'PageDeletedConflict', 'PageCreatedConflict',
+    'UploadWarning',
+    'ServerError', 'FatalServerError', 'Server504Error',
+    'CaptchaError', 'SpamfilterError', 'CircularRedirect',
+    'InterwikiRedirectPage',
+    'WikiBaseError', 'CoordinateGlobeUnknownException',
+    'QuitKeyboardInterrupt',
+)
+__all__ += textlib_methods
+
+if PY2:
+    # T111615: Python 2 requires __all__ is bytes
+    globals()['__all__'] = tuple(bytes(item) for item in __all__)
 
 for _name in textlib_methods:
     target = getattr(textlib, _name)
@@ -476,9 +478,6 @@ class WbQuantity(object):
         """
         if amount is None:
             raise ValueError('no amount given')
-        if unit is not None and unit != '1':
-            raise NotImplementedError(
-                'Currently only unit-less quantities are supported')
         if unit is None:
             unit = '1'
         self.amount = amount
@@ -605,31 +604,33 @@ def Site(code=None, fam=None, user=None, sysop=None, interface=None, url=None):
     _logger = "wiki"
 
     if url:
-        if url in _url_cache:
-            cached = _url_cache[url]
-            if cached:
-                code = cached[0]
-                fam = cached[1]
-            else:
-                raise SiteDefinitionError("Unknown URL '{0}'.".format(url))
-        else:
+        if url not in _url_cache:
+            matched_sites = []
             # Iterate through all families and look, which does apply to
             # the given URL
             for fam in config.family_files:
-                try:
-                    family = pywikibot.family.Family.load(fam)
-                    code = family.from_url(url)
-                    if code:
-                        _url_cache[url] = (code, fam)
-                        break
-                except Exception as e:
-                    pywikibot.warning('Error in Family(%s).from_url: %s'
-                                      % (fam, e))
+                family = pywikibot.family.Family.load(fam)
+                code = family.from_url(url)
+                if code is not None:
+                    matched_sites += [(code, fam)]
+
+            if matched_sites:
+                if len(matched_sites) > 1:
+                    pywikibot.warning(
+                        'Found multiple matches for URL "{0}": {1} (use first)'
+                        .format(url, ', '.join(str(s) for s in matched_sites)))
+                _url_cache[url] = matched_sites[0]
             else:
-                _url_cache[url] = None
                 # TODO: As soon as AutoFamily is ready, try and use an
                 #       AutoFamily
-                raise SiteDefinitionError("Unknown URL '{0}'.".format(url))
+                _url_cache[url] = None
+
+        cached = _url_cache[url]
+        if cached:
+            code = cached[0]
+            fam = cached[1]
+        else:
+            raise SiteDefinitionError("Unknown URL '{0}'.".format(url))
     else:
         # Fallback to config defaults
         code = code or config.mylang
@@ -673,7 +674,7 @@ def Site(code=None, fam=None, user=None, sysop=None, interface=None, url=None):
 getSite = pywikibot.tools.redirect_func(Site, old_name='getSite')
 
 
-from .page import (
+from pywikibot.page import (
     Page,
     FilePage,
     Category,
@@ -683,7 +684,7 @@ from .page import (
     PropertyPage,
     Claim,
 )
-from .page import html2unicode, url2unicode, unicode2html
+from pywikibot.page import html2unicode, url2unicode, unicode2html
 
 
 link_regex = re.compile(r'\[\[(?P<title>[^\]|[<>{}]*)(\|.*?)?\]\]')
@@ -736,11 +737,9 @@ def stopme():
 
         if page_put_queue.qsize() > 1:
             num, sec = remaining()
-            format_values = dict(num=num, sec=sec)
-            output(u'\03{lightblue}'
-                   u'Waiting for %(num)i pages to be put. '
-                   u'Estimated time remaining: %(sec)s'
-                   u'\03{default}' % format_values)
+            output(color_format(
+                '{lightblue}Waiting for {num} pages to be put. '
+                'Estimated time remaining: {sec}{default}', num=num, sec=sec))
 
         while(_putthread.isAlive()):
             try:

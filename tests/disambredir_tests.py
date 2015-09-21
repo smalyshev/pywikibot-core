@@ -9,7 +9,7 @@ These tests write to the wiki.
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 #
@@ -19,11 +19,11 @@ import pywikibot
 from scripts import disambredir
 
 from tests.aspects import unittest
-from tests.bot_tests import FakeSaveBotTestCase
+from tests.bot_tests import FakeSaveBotTestCase, TWNBotTestCase
 from tests.utils import fixed_generator
 
 
-class TestDisambigurationRedirectBot(FakeSaveBotTestCase):
+class TestDisambigurationRedirectBot(FakeSaveBotTestCase, TWNBotTestCase):
 
     """
     Test cases for DisambigurationRedirectBot.

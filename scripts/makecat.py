@@ -37,7 +37,7 @@ L(ist) - show current list of pages to include or to check
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 #
@@ -211,7 +211,7 @@ try:
     pywikibot.setAction(i18n.twtranslate(mysite, 'makecat-create', {'cat': workingcatname}))
     workingcat = pywikibot.Category(mysite,
                                     u'%s:%s'
-                                    % (mysite.category_namespace(),
+                                    % (mysite.namespaces.CATEGORY,
                                        workingcatname))
     filename = pywikibot.config.datafilepath(
         'category', workingcatname.encode('ascii', 'xmlcharrefreplace') + '_exclude.txt')

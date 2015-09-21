@@ -1,11 +1,11 @@
 #!/usr/bin/python
-"""Test tools.chars package."""
 # -*- coding: utf-8  -*-
+"""Test tools.chars package."""
 #
 # (C) Pywikibot team, 2015
 #
 # Distributed under the terms of the MIT license.
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 

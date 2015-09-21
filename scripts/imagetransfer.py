@@ -31,15 +31,18 @@ used on a page reachable via interwiki links.
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 
 import re
 import sys
+
 import pywikibot
-import upload
+
 from pywikibot import config, i18n, textlib
+
+from scripts import upload
 
 copy_message = {
     'ar': u"هذه الصورة تم نقلها من %s. الوصف الأصلي كان:\r\n\r\n%s",
@@ -62,7 +65,7 @@ copy_message = {
 }
 
 nowCommonsTemplate = {
-    'ar': u'{{subst:الآن_كومنز|Image:%s}}',
+    'ar': u'{{الآن كومنز|%s}}',
     'de': u'{{NowCommons|%s}}',
     'fr': u'{{Désormais sur Commons|%s}}',
     'en': u'{{subst:ncd|Image:%s}}',
@@ -153,7 +156,7 @@ licenseTemplates = {
 }
 
 
-class ImageTransferBot:
+class ImageTransferBot(object):
 
     """Image transfer bot."""
 
@@ -246,7 +249,7 @@ class ImageTransferBot:
                 # to upload anyway, using another name.
                 try:
                     # Maybe the image is on the target site already
-                    targetTitle = '%s:%s' % (self.targetSite.image_namespace(),
+                    targetTitle = '%s:%s' % (self.targetSite.namespaces.FILE,
                                              image.title().split(':', 1)[1])
                     targetImage = pywikibot.Page(self.targetSite, targetTitle)
                     targetImage.get()

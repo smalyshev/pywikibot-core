@@ -36,7 +36,7 @@ Lists all the category pages that transclude {{cfd}} and {{cfdu}}:
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 
@@ -46,7 +46,7 @@ import pywikibot
 templates = ['ref', 'note', 'ref label', 'note label', 'reflist']
 
 
-class TemplateCountRobot:
+class TemplateCountRobot(object):
 
     """Template count bot."""
 
@@ -98,7 +98,7 @@ class TemplateCountRobot:
         mysite = pywikibot.Site()
         # The names of the templates are the keys, and lists of pages
         # transcluding templates are the values.
-        mytpl = mysite.namespaces.lookup_name(mysite.template_namespace())
+        mytpl = mysite.namespaces.TEMPLATE
         for template in templates:
             transcludingArray = []
             gen = pywikibot.Page(mysite, template, ns=mytpl).getReferences(

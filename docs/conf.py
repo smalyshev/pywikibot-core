@@ -11,6 +11,7 @@
 #
 # All configuration values have a default; values that are commented out
 # serve to show the default.
+from __future__ import absolute_import, unicode_literals
 
 import os
 import sys
@@ -175,16 +176,7 @@ htmlhelp_basename = 'Pywikibotdoc'
 
 # -- Options for LaTeX output --------------------------------------------------
 
-latex_elements = {
-# The paper size ('letterpaper' or 'a4paper').
-#  'papersize': 'letterpaper',
-
-# The font size ('10pt', '11pt' or '12pt').
-#  'pointsize': '10pt',
-
-# Additional stuff for the LaTeX preamble.
-#  'preamble': '',
-}
+latex_elements = {}
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
@@ -256,6 +248,11 @@ def pywikibot_env():
 def pywikibot_script_docstring_fixups(
         app, what, name, obj, options, lines):
     """Pywikibot specific conversions."""
+    if what != "module":
+        return
+
+    if os.path.sep + "scripts" + os.path.sep not in obj.__file__:
+        return
     for index, line in enumerate(lines):
         if line in ('&params;', '&pagegenerators_help;'):
             lines[index] = ('This script supports use of '

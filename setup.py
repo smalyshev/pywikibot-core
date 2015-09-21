@@ -5,6 +5,7 @@
 #
 # Distributed under the terms of the MIT license.
 #
+from __future__ import absolute_import, unicode_literals
 
 import itertools
 import os
@@ -39,6 +40,7 @@ dependencies = ['requests']
 
 # the irc module has no Python 2.6 support since 10.0
 irc_dep = 'irc==8.9' if sys.version_info < (2, 7) else 'irc'
+csv_dep = 'unicodecsv<=0.13' if PYTHON_VERSION < (2, 7) else 'unicodecsv'
 
 extra_deps = {
     # Core library dependencies
@@ -52,12 +54,13 @@ extra_deps = {
     'rcstream': ['socketIO-client<0.6.1'],
     'security': ['requests[security]'],
     'mwoauth': ['mwoauth>=0.2.4'],
+    'html': ['BeautifulSoup4'],
 }
 
 if PY2:
     # Additional core library dependencies which are only available on Python 2
     extra_deps.update({
-        'csv': ['unicodecsv'],
+        'csv': [csv_dep],
         'MySQL': ['oursql'],
         'unicode7': ['unicodedata2>=7.0.0-2'],
     })
@@ -65,6 +68,7 @@ if PY2:
 script_deps = {
     'flickrripper.py': ['Pillow'],
     'states_redirect.py': ['pycountry'],
+    'weblinkchecker.py': ['memento_client>=0.5.1'],
 }
 # flickrapi 1.4.4 installs a root logger in verbose mode; 1.4.5 fixes this.
 # The problem doesnt exist in flickrapi 2.x.
@@ -91,7 +95,6 @@ dependency_links = [
     'hg+https://bitbucket.org/TJG/pywin32#egg=pywin32',
     'git+https://github.com/vasily-v-ryabov/pywinauto-64#egg=pywinauto',
     'git+https://github.com/nlhepler/pydot#egg=pydot-1.0.29',
-    'git+https://github.com/mementoweb/py-memento-client#egg=memento_client-0.5.0',
 ]
 
 if PYTHON_VERSION < (2, 7, 3):

@@ -45,7 +45,7 @@ print("%s" % entry._uniquedescriptionstr())
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import print_function, unicode_literals
+from __future__ import absolute_import, print_function, unicode_literals
 __version__ = '$Id$'
 #
 
@@ -171,7 +171,11 @@ class CacheEntry(api.CachedRequest):
             self.site._username = [username, username]
         if not params:
             raise ParseError('No request params')
-        self._params = dict(eval(params))
+        self._params = {}
+        for key, value in eval(params):
+            if isinstance(value, bytes):
+                value = value.decode(self.site.encoding())
+            self._params[key] = value.split('|')
 
     def _delete(self):
         """Delete the cache entry."""

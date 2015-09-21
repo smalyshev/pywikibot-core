@@ -5,7 +5,7 @@
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 
@@ -30,6 +30,7 @@ from warnings import warn
 import pywikibot
 from pywikibot import config, login
 from pywikibot.tools import MediaWikiVersion, deprecated, itergroup, ip, PY2
+from pywikibot.tools.formatter import color_format
 from pywikibot.exceptions import (
     Server504Error, Server414Error, FatalServerError, NoUsername, Error
 )
@@ -105,6 +106,14 @@ class APIError(Error):
 
     def __str__(self):
         """Return a string representation."""
+        if self.other:
+            return '{0}: {1} [{2}]'.format(
+                self.code,
+                self.info,
+                '; '.join(
+                    '{0}:{1}'.format(key, val)
+                    for key, val in self.other.items()))
+
         return "%(code)s: %(info)s" % self.__dict__
 
 
@@ -701,10 +710,7 @@ class ParamInfo(Container):
                             submodules.add(child)
             else:
                 # Boolean submodule info added to MW API in afa153ae
-                if self.site.version() >= MediaWikiVersion('1.24wmf18'):
-                    params = set(param['name'] for param in parameters
-                                 if 'submodules' in param)
-                else:
+                if self.site.version() < MediaWikiVersion('1.24wmf18'):
                     if module == 'main':
                         params = set(['action'])
                     elif module == 'query':
@@ -715,10 +721,10 @@ class ParamInfo(Container):
                         if param['name'] in params:
                             param['submodules'] = ''
 
-                for param in params:
-                    param = self.parameter(module, param)
+                for param in parameters:
                     # Do not add format modules
-                    if module != 'main' or param['name'] != 'format':
+                    if 'submodules' in param and (module != 'main' or
+                                                  param['name'] != 'format'):
                         submodules |= set(param['type'])
 
             if submodules:
@@ -1662,8 +1668,8 @@ class Request(MutableMapping):
         if self.action == 'query':
             meta = self._params.get("meta", [])
             if "userinfo" not in meta:
-                meta.append("userinfo")
-                self._params["meta"] = meta
+                meta = set(meta + ['userinfo'])
+                self._params['meta'] = list(meta)
             uiprop = self._params.get("uiprop", [])
             uiprop = set(uiprop + ["blockinfo", "hasmsg"])
             self._params["uiprop"] = list(sorted(uiprop))
@@ -1672,6 +1678,10 @@ class Request(MutableMapping):
                     inprop = self._params.get("inprop", [])
                     info = set(inprop + ["protection", "talkid", "subjectid"])
                     self._params["info"] = list(info)
+            if 'prop' in self._params:
+                if self.site.has_extension('ProofreadPage'):
+                    prop = set(self._params['prop'] + ['proofread'])
+                    self._params['prop'] = list(prop)
             # When neither 'continue' nor 'rawcontinue' is present and the
             # version number is at least 1.25wmf5 we add a dummy rawcontinue
             # parameter. Querying siteinfo is save as it adds 'continue'.
@@ -1736,6 +1746,11 @@ class Request(MutableMapping):
                     pywikibot.error(
                         u"_encoded_items: '%s' could not be encoded as '%s':"
                         u" %r" % (key, self.site.encoding(), value))
+            if PY2:
+                key = key.encode('ascii')
+            else:
+                assert key.encode('ascii')
+            assert isinstance(key, str)
             params[key] = value
         return params
 
@@ -1761,9 +1776,9 @@ class Request(MutableMapping):
     def _simulate(self, action):
         """Simulate action."""
         if action and config.simulate and (self.write or action in config.actions_to_block):
-            pywikibot.output(
-                u'\03{lightyellow}SIMULATION: %s action blocked.\03{default}'
-                % action)
+            pywikibot.output(color_format(
+                '{lightyellow}SIMULATION: {0} action blocked.{default}',
+                action))
             return {action: {'result': 'Success', 'nochange': ''}}
 
     def _is_wikibase_error_retryable(self, error):
@@ -1917,6 +1932,12 @@ class Request(MutableMapping):
                     else:
                         body = paramstring
 
+                pywikibot.debug('API request to {0} (uses get: {1}):\n'
+                                'Headers: {2!r}\nURI: {3!r}\n'
+                                'Body: {4!r}'.format(self.site, use_get,
+                                                     headers, uri, body),
+                                _logger)
+
                 rawdata = http.request(
                     site=self.site, uri=uri, method='GET' if use_get else 'POST',
                     body=body, headers=headers)
@@ -1979,35 +2000,68 @@ class Request(MutableMapping):
                                "Unable to process query response of type %s."
                                % type(result),
                                data=result)
-            if self.action == 'query':
-                if 'userinfo' in result.get('query', ()):
-                    if hasattr(self.site, '_userinfo'):
-                        self.site._userinfo.update(result['query']['userinfo'])
-                    else:
-                        self.site._userinfo = result['query']['userinfo']
-                status = self.site._loginstatus  # save previous login status
-                if (('error' in result and
-                     result['error']['code'].endswith('limit')) or
-                    (status >= 0 and
-                        self.site._userinfo['name'] != self.site._username[status])):
-                    # user is no longer logged in (session expired?)
-                    # reset userinfo, then make user log in again
-                    del self.site._userinfo
-                    self.site._loginstatus = -1
-                    if status < 0:
-                        status = 0  # default to non-sysop login
-                    self.site.login(status)
-                    # retry the previous query
+
+            if self.action == 'query' and 'userinfo' in result.get('query', ()):
+                # if we get passed userinfo in the query result, we can confirm
+                # that we are logged in as the correct user. If this is not the
+                # case, force a re-login.
+                username = result['query']['userinfo']['name']
+                if self.site.user() is not None and self.site.user() != username:
+                    pywikibot.error(
+                        "Logged in as '{actual}' instead of '{expected}'. "
+                        "Forcing re-login.".format(
+                            actual=username,
+                            expected=self.site.user()
+                        )
+                    )
+                    self.site._relogin()
                     continue
+
             self._handle_warnings(result)
+
             if "error" not in result:
                 return result
+
+            error = result['error'].copy()
+            for key in result:
+                if key in ('error', 'warnings'):
+                    continue
+                assert key not in error
+                assert isinstance(result[key], basestring), \
+                    'Unexpected %s: %r' % (key, result[key])
+                error[key] = result[key]
 
             if "*" in result["error"]:
                 # help text returned
                 result['error']['help'] = result['error'].pop("*")
             code = result['error'].setdefault('code', 'Unknown')
             info = result['error'].setdefault('info', None)
+
+            # Older wikis returned an error instead of a warning when
+            # the request asked for too many values. If we get this
+            # error, assume we are not logged in (we can't check this
+            # because the userinfo data is not present) and force
+            # a re-login
+            if code.endswith('limit'):
+                pywikibot.error("Received API limit error. Forcing re-login")
+                self.site._relogin()
+                continue
+
+            # If the user assertion failed, we're probably logged out as well.
+            if code == 'assertuserfailed':
+                pywikibot.error("User assertion failed. Forcing re-login.")
+                self.site._relogin()
+                continue
+
+            # Lastly, the purge module require a POST if used as anonymous user,
+            # but we normally send a GET request. If the API tells us the request
+            # has to be POSTed, we're probably logged out.
+            if code == 'mustbeposted' and self.action == 'purge':
+                pywikibot.error("Received unexpected 'mustbeposted' error. "
+                                "Forcing re-login.")
+                self.site._relogin()
+                continue
+
             if code == "maxlag":
                 lag = lagpattern.search(info)
                 if lag:
@@ -2022,15 +2076,21 @@ class Request(MutableMapping):
                 return {'help': {'mime': 'text/plain',
                                  'help': result['error']['help']}}
 
+            pywikibot.warning('API error %s: %s' % (code, info))
+
             if code.startswith(u'internal_api_error_'):
                 class_name = code[len(u'internal_api_error_'):]
+
+                del error['code']  # is added via class_name
+                e = APIMWException(class_name, **error)
+
                 retry = class_name in ['DBConnectionError',  # bug 62974
                                        'DBQueryError',  # bug 58158
                                        'ReadOnlyError'  # bug 59227
                                        ]
 
                 pywikibot.error("Detected MediaWiki API exception %s%s"
-                                % (class_name,
+                                % (e,
                                    "; retrying" if retry else "; raising"))
                 # Due to bug T66958, Page's repr may return non ASCII bytes
                 # Get as bytes in PY2 and decode with the console encoding as
@@ -2049,8 +2109,7 @@ class Request(MutableMapping):
                     self.wait()
                     continue
 
-                del result['error']['code']  # is added via class_name
-                raise APIMWException(class_name, **result['error'])
+                raise e
 
             # bugs 46535, 62126, 64494, 66619
             # maybe removed when it 46535 is solved
@@ -2267,7 +2326,25 @@ class CachedRequest(Request):
         return self._data
 
 
-class APIGenerator(object):
+class _RequestWrapper(object):
+
+    """A wrapper class to handle the usage of the C{parameters} parameter."""
+
+    def _clean_kwargs(self, kwargs, **mw_api_args):
+        """Clean kwargs, define site and request class."""
+        if 'site' not in kwargs:
+            warn('{0} invoked without a site'.format(self.__class__.__name__),
+                 RuntimeWarning, 3)
+            kwargs['site'] = pywikibot.Site()
+        assert(not hasattr(self, 'site') or self.site == kwargs['site'])
+        self.site = kwargs['site']
+        self.request_class = kwargs['site']._request_class(kwargs)
+        kwargs = self.request_class.clean_kwargs(kwargs)
+        kwargs['parameters'].update(mw_api_args)
+        return kwargs
+
+
+class APIGenerator(_RequestWrapper):
 
     """Iterator that handle API responses containing lists.
 
@@ -2294,12 +2371,7 @@ class APIGenerator(object):
         @param data_name: Name of the data in API response.
         @type data_name: str
         """
-        kwargs['action'] = action
-        try:
-            self.site = kwargs['site']
-        except KeyError:
-            self.site = pywikibot.Site()
-            kwargs['site'] = self.site
+        kwargs = self._clean_kwargs(kwargs, action=action)
 
         self.continue_name = continue_name
         self.limit_name = limit_name
@@ -2307,8 +2379,8 @@ class APIGenerator(object):
 
         self.query_increment = 50
         self.limit = None
-        self.starting_offset = kwargs.pop(self.continue_name, 0)
-        self.request = Request(**kwargs)
+        self.starting_offset = kwargs['parameters'].pop(self.continue_name, 0)
+        self.request = self.request_class(**kwargs)
         self.request[self.limit_name] = self.query_increment
 
     def set_query_increment(self, value):
@@ -2378,7 +2450,7 @@ class APIGenerator(object):
                 break
 
 
-class QueryGenerator(object):
+class QueryGenerator(_RequestWrapper):
 
     """Base class for iterators that handle responses to API action=query.
 
@@ -2490,18 +2562,6 @@ class QueryGenerator(object):
         #     "templates":{"tlcontinue":"310820|828|Namespace_detect"}}
         # self.continuekey is a list
         self.continuekey = self.modules
-
-    def _clean_kwargs(self, kwargs, **mw_api_args):
-        """Clean kwargs, define site and request class."""
-        if 'site' not in kwargs:
-            warn('QueryGenerator() invoked without a site', RuntimeWarning, 3)
-            kwargs['site'] = pywikibot.Site()
-        assert(not hasattr(self, 'site') or self.site == kwargs['site'])
-        self.site = kwargs['site']
-        self.request_class = kwargs['site']._request_class(kwargs)
-        kwargs = self.request_class.clean_kwargs(kwargs)
-        kwargs['parameters'].update(mw_api_args)
-        return kwargs
 
     def set_query_increment(self, value):
         """Set the maximum number of items to be retrieved per API query.
@@ -2784,12 +2844,6 @@ class PageGenerator(QueryGenerator):
         parameters['generator'] = generator
         QueryGenerator.__init__(self, **kwargs)
         self.resultkey = "pages"  # element to look for in result
-
-        # TODO: Bug T91912 when using step > 50 with proofread, with queries
-        # returning Pages from Page ns.
-        if self.site.has_extension('ProofreadPage'):
-            self.request['prop'].append('proofread')
-
         self.props = self.request['prop']
 
     def result(self, pagedata):

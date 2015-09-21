@@ -54,7 +54,7 @@ or by adding a list to the given one:
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 #
@@ -206,7 +206,7 @@ def _reformat_ISBNs(text, strict=True):
         text, lambda match: _format_isbn_match(match, strict=strict))
 
 
-class CosmeticChangesToolkit:
+class CosmeticChangesToolkit(object):
 
     """Cosmetic changes toolkit."""
 

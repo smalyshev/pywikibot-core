@@ -5,7 +5,7 @@
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 #
@@ -47,35 +47,77 @@ class DryCachedRequestTests(SiteAttributeTestCase):
     dry = True
 
     def setUp(self):
+        """Initialize the fake requests."""
         super(DryCachedRequestTests, self).setUp()
-        self.parms = {'site': self.basesite,
-                      'action': 'query',
+        self.parms = {'action': 'query',
                       'meta': 'userinfo'}
-        self.req = CachedRequest(expiry=1, **self.parms)
-        self.expreq = CachedRequest(expiry=0, **self.parms)
-        self.diffreq = CachedRequest(expiry=1, site=self.basesite, action='query', meta='siteinfo')
-        self.diffsite = CachedRequest(expiry=1, site=self.altsite, action='query', meta='userinfo')
+        self.req = CachedRequest(expiry=1, site=self.basesite,
+                                 parameters=self.parms)
+        self.expreq = CachedRequest(expiry=0, site=self.basesite,
+                                    parameters=self.parms)
+        self.diffreq = CachedRequest(
+            expiry=1, site=self.basesite,
+            parameters={'action': 'query', 'meta': 'siteinfo'})
+        self.diffsite = CachedRequest(
+            expiry=1, site=self.altsite,
+            parameters={'action': 'query', 'meta': 'userinfo'})
+        # When using ** the paramters are still unicode
+        self.deprecated_explicit = CachedRequest(
+            expiry=1, site=self.basesite, action='query', meta='userinfo')
+        self.deprecated_asterisks = CachedRequest(
+            expiry=1, site=self.basesite, **self.parms)
 
     def test_expiry_formats(self):
+        """Test using a timedelta as expiry."""
         self.assertEqual(self.req.expiry,
-                         CachedRequest(datetime.timedelta(days=1), **self.parms).expiry)
+                         CachedRequest(datetime.timedelta(days=1), site=self.basesite,
+                                       parameters=self.parms).expiry)
 
     def test_expired(self):
+        """Test if the request is expired."""
         self.assertFalse(self.req._expired(datetime.datetime.now()))
         self.assertTrue(self.req._expired(datetime.datetime.now() - datetime.timedelta(days=2)))
 
+    def test_parameter_types(self):
+        """Test _uniquedescriptionstr is identical using different ways."""
+        # This test is done as create_file_name and cachefile_path only use
+        # the hashed name which is not very helpful
+        self.assertEqual(self.req._uniquedescriptionstr(),
+                         self.req._uniquedescriptionstr())
+        self.assertEqual(self.req._uniquedescriptionstr(),
+                         self.expreq._uniquedescriptionstr())
+        self.assertEqual(self.req._uniquedescriptionstr(),
+                         self.deprecated_explicit._uniquedescriptionstr())
+        self.assertEqual(self.req._uniquedescriptionstr(),
+                         self.deprecated_asterisks._uniquedescriptionstr())
+        self.assertNotEqual(self.req._uniquedescriptionstr(),
+                            self.diffreq._uniquedescriptionstr())
+        self.assertNotEqual(self.req._uniquedescriptionstr(),
+                            self.diffsite._uniquedescriptionstr())
+
     def test_get_cache_dir(self):
+        """Test that 'apicache' is in the cache dir."""
         retval = self.req._get_cache_dir()
         self.assertIn('apicache', retval)
 
     def test_create_file_name(self):
+        """Test the file names for the cache."""
         self.assertEqual(self.req._create_file_name(), self.req._create_file_name())
         self.assertEqual(self.req._create_file_name(), self.expreq._create_file_name())
+        self.assertEqual(self.req._create_file_name(),
+                         self.deprecated_explicit._create_file_name())
+        self.assertEqual(self.req._create_file_name(),
+                         self.deprecated_asterisks._create_file_name())
         self.assertNotEqual(self.req._create_file_name(), self.diffreq._create_file_name())
 
     def test_cachefile_path(self):
+        """Test the file paths for the cache."""
         self.assertEqual(self.req._cachefile_path(), self.req._cachefile_path())
         self.assertEqual(self.req._cachefile_path(), self.expreq._cachefile_path())
+        self.assertEqual(self.req._cachefile_path(),
+                         self.deprecated_explicit._cachefile_path())
+        self.assertEqual(self.req._cachefile_path(),
+                         self.deprecated_asterisks._cachefile_path())
         self.assertNotEqual(self.req._cachefile_path(), self.diffreq._cachefile_path())
         self.assertNotEqual(self.req._cachefile_path(), self.diffsite._cachefile_path())
 
@@ -87,6 +129,7 @@ class MockCachedRequestKeyTests(TestCase):
     net = False
 
     def setUp(self):
+        """Create a mock family and site."""
         class MockFamily(Family):
 
             @property
@@ -136,6 +179,7 @@ class MockCachedRequestKeyTests(TestCase):
         super(MockCachedRequestKeyTests, self).setUp()
 
     def test_cachefile_path_different_users(self):
+        """Test and compare the file paths when different usernames are used."""
         req = CachedRequest(expiry=1, site=self.mocksite,
                             action='query', meta='siteinfo')
         anonpath = req._cachefile_path()
@@ -158,6 +202,7 @@ class MockCachedRequestKeyTests(TestCase):
         self.assertNotEqual(userpath, sysoppath)
 
     def test_unicode(self):
+        """Test caching with Unicode content."""
         self.mocksite._userinfo = {'name': u'محمد الفلسطيني'}
         self.mocksite._loginstatus = 0
 
@@ -337,6 +382,7 @@ class ParamInfoDictTests(DefaultDrySiteTestCase):
         site._paraminfo._modules = {'query': frozenset(['info'])}
 
     def test_new_format(self):
+        """Test using a dummy formatted in the new modules-only mode."""
         pi = self.get_site()._paraminfo
         # Set it to the new limited set of keys.
         pi.paraminfo_keys = frozenset(['modules'])
@@ -357,6 +403,7 @@ class ParamInfoDictTests(DefaultDrySiteTestCase):
         self.assertIn('info', pi)
 
     def test_old_format(self):
+        """Test using a dummy formatted in the old mode."""
         pi = self.get_site()._paraminfo
         # Reset it to the complete set of possible keys defined in the class
         pi.paraminfo_keys = ParamInfo.paraminfo_keys
@@ -375,6 +422,7 @@ class ParamInfoDictTests(DefaultDrySiteTestCase):
         self.assertIn('info', pi)
 
     def test_attribute(self):
+        """Test using __getitem__."""
         pi = self.get_site()._paraminfo
         # Reset it to the complete set of possible keys defined in the class
         pi.paraminfo_keys = ParamInfo.paraminfo_keys
@@ -391,6 +439,7 @@ class ParamInfoDictTests(DefaultDrySiteTestCase):
         self.assertEqual(pi['info']['prefix'], 'in')
 
     def test_parameter(self):
+        """Test parameter() method."""
         pi = self.get_site()._paraminfo
         # Reset it to the complete set of possible keys defined in the class
         pi.paraminfo_keys = ParamInfo.paraminfo_keys

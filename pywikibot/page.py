@@ -3,6 +3,7 @@
 Objects representing various types of MediaWiki, including Wikibase, pages.
 
 This module also includes objects:
+
 * Property: a type of semantic data.
 * Claim: an instance of a semantic assertion.
 * Revision: a single change to a wiki page.
@@ -15,7 +16,7 @@ This module also includes objects:
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 #
@@ -57,7 +58,7 @@ from pywikibot.exceptions import (
     UserRightsError,
 )
 from pywikibot.tools import (
-    PYTHON_VERSION,
+    PYTHON_VERSION, PY2,
     MediaWikiVersion, UnicodeMixin, ComparableMixin, DotReadableDict,
     deprecated, deprecate_arg, deprecated_args, issue_deprecation_warning,
     first_upper, remove_last_args, _NotImplementedWarning,
@@ -280,7 +281,14 @@ class BasePage(UnicodeMixin, ComparableMixin):
 
     def __repr__(self):
         """Return a more complete string representation."""
-        title = self.title().encode(config.console_encoding)
+        if not PY2:
+            title = repr(self.title())
+        else:
+            try:
+                title = self.title().encode(config.console_encoding)
+            except UnicodeEncodeError:
+                # okay console encoding didn't work, at least try something
+                title = self.title().encode('unicode_escape')
         return str('{0}({1})').format(self.__class__.__name__, title)
 
     def _cmpkey(self):
@@ -523,6 +531,13 @@ class BasePage(UnicodeMixin, ComparableMixin):
         """
         self.site.loadpageinfo(self, preload=True)
         return self._preloadedtext
+
+    def _get_parsed_page(self):
+        """Retrieve parsed text (via action=parse) and cache it."""
+        # Get (cached) parsed text.
+        if not hasattr(self, '_parsed_text'):
+            self._parsed_text = self.site.get_parsed_page(self)
+        return self._parsed_text
 
     def properties(self, force=False):
         """
@@ -1116,7 +1131,6 @@ class BasePage(UnicodeMixin, ComparableMixin):
            pywikibot.calledModuleName() in config.cosmetic_changes_deny_script:
             return
         family = self.site.family.name
-        config.cosmetic_changes_disable.update({'wikidata': ('repo', )})
         if config.cosmetic_changes_mylang_only:
             cc = ((family == config.family and
                    self.site.lang == config.mylang) or
@@ -2011,8 +2025,8 @@ class Page(BasePage):
         """Iterate templates used on this Page.
 
         @return: a generator that yields a tuple for each use of a template
-        in the page, with the template Page as the first entry and a list of
-        parameters as the second entry.
+            in the page, with the template Page as the first entry and a list of
+            parameters as the second entry.
         """
         # WARNING: may not return all templates used in particularly
         # intricate cases such as template substitution
@@ -2257,7 +2271,7 @@ class FilePage(Page):
     def getFileVersionHistory(self):
         """Return the file's version history.
 
-        @return: A list of dictionaries with the following keys::
+        @return: A list of dictionaries with the following keys:
 
             [comment, sha1, url, timestamp, metadata,
              height, width, mime, user, descriptionurl, size]
@@ -2521,7 +2535,7 @@ class Category(Page):
         # move to category.py? (Although it doesn't seem to be used there,
         # either)
         if not isinstance(cat, Category):
-            cat = self.site.category_namespace() + ':' + cat
+            cat = self.site.namespaces.CATEGORY + ':' + cat
             targetCat = Category(self.site, cat)
         else:
             targetCat = cat
@@ -2562,7 +2576,7 @@ class Category(Page):
         """
         # I don't see why we need this as part of the framework either
         # move to scripts/category.py?
-        catname = self.site.category_namespace() + ':' + catname
+        catname = self.site.namespaces.CATEGORY + ':' + catname
         targetCat = Category(self.site, catname)
         if targetCat.exists():
             pywikibot.warning(u'Target page %s already exists!'
@@ -3079,10 +3093,10 @@ class WikibasePage(BasePage):
         @kwarg entity_type: Wikibase entity type
         @type entity_type: str ('item' or 'property')
 
-        @raise TypeError: incorrect use of parameters
-        @raise ValueError: incorrect namespace
-        @raise pywikibot.Error: title parsing problems
-        @raise NotImplementedError: the entity type is not supported
+        @raises TypeError: incorrect use of parameters
+        @raises ValueError: incorrect namespace
+        @raises pywikibot.Error: title parsing problems
+        @raises NotImplementedError: the entity type is not supported
         """
         if not isinstance(site, pywikibot.site.DataSite):
             raise TypeError("site must be a pywikibot.site.DataSite object")
@@ -3696,15 +3710,21 @@ class ItemPage(WikibasePage):
             raise pywikibot.NoPage(i)
         return i
 
-    def get(self, force=False, *args, **kwargs):
+    def get(self, force=False, get_redirect=False, *args, **kwargs):
         """
         Fetch all item data, and cache it.
 
         @param force: override caching
         @type force: bool
+        @param get_redirect: return the item content, do not follow the
+                             redirect, do not raise an exception.
+        @type get_redirect: bool
         @param args: values of props
         """
         data = super(ItemPage, self).get(force=force, *args, **kwargs)
+
+        if self.isRedirectPage() and not get_redirect:
+            raise pywikibot.IsRedirectPage(self)
 
         # sitelinks
         self.sitelinks = {}
@@ -3875,6 +3895,7 @@ class ItemPage(WikibasePage):
         Make the item redirect to another item.
 
         You need to define an extra argument to make this work, like save=True
+
         @param target_page: target of the redirect, this argument is required.
         @type target_page: pywikibot.Item or string
         @param force: if true, it sets the redirect target even the page
@@ -3892,8 +3913,15 @@ class ItemPage(WikibasePage):
         self.repo.set_redirect_target(
             from_item=self, to_item=target_page)
 
+    def isRedirectPage(self):
+        """Return True if item is a redirect, False if not or not existing."""
+        if hasattr(self, '_content') and not hasattr(self, '_isredir'):
+            self._isredir = self.id != self._content.get('id', self.id)
+            return self._isredir
+        return super(ItemPage, self).isRedirectPage()
 
-class Property():
+
+class Property(object):
 
     """
     A Wikibase property.
@@ -4041,6 +4069,8 @@ class Claim(Property):
         'quantity': lambda value, site: pywikibot.WbQuantity.fromWikibase(value),
         'monolingualtext': lambda value, site: pywikibot.WbMonolingualText.fromWikibase(value),
     }
+
+    SNAK_TYPES = ('value', 'somevalue', 'novalue')
 
     def __init__(self, site, pid, snak=None, hash=None, isReference=False,
                  isQualifier=False, **kwargs):
@@ -4231,6 +4261,7 @@ class Claim(Property):
                                            **kwargs)
         # TODO: Re-create the entire item from JSON, not just id
         self.snak = data['claim']['id']
+        self.on_item.latest_revision_id = data['pageinfo']['lastrevid']
 
     def getTarget(self):
         """
@@ -4256,7 +4287,7 @@ class Claim(Property):
         @param value: Type of snak
         @type value: str ('value', 'somevalue', or 'novalue')
         """
-        if value in ['value', 'somevalue', 'novalue']:
+        if value in self.SNAK_TYPES:
             self.snaktype = value
         else:
             raise ValueError(
@@ -4310,10 +4341,10 @@ class Claim(Property):
         @type claims: list of pywikibot.Claim
         """
         data = self.repo.editSource(self, claims, new=True, **kwargs)
+        self.on_item.latest_revision_id = data['pageinfo']['lastrevid']
         source = defaultdict(list)
         for claim in claims:
             claim.hash = data['reference']['hash']
-            self.on_item.latest_revision_id = data['pageinfo']['lastrevid']
             source[claim.getID()].append(claim)
         self.sources.append(source)
 
@@ -4333,7 +4364,8 @@ class Claim(Property):
         @param sources: the sources to remove
         @type sources: list of pywikibot.Claim
         """
-        self.repo.removeSources(self, sources, **kwargs)
+        data = self.repo.removeSources(self, sources, **kwargs)
+        self.on_item.latest_revision_id = data['pageinfo']['lastrevid']
         for source in sources:
             source_dict = defaultdict(list)
             source_dict[source.getID()].append(source)
@@ -4358,6 +4390,7 @@ class Claim(Property):
         Check whether the Claim's target is equal to specified value.
 
         The function checks for:
+
         - ItemPage ID equality
         - WbTime year equality
         - Coordinate equality, regarding precision

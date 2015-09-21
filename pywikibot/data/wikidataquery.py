@@ -4,7 +4,7 @@
 # (C) Pywikibot team, 2013
 #
 # Distributed under the terms of the MIT license.
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 import json
 import sys
@@ -34,7 +34,7 @@ def listify(x):
     return x if isinstance(x, list) else [x]
 
 
-class QuerySet():
+class QuerySet(object):
 
     """
     A QuerySet represents a set of queries or other query sets.
@@ -116,7 +116,7 @@ class QuerySet():
         return u"QuerySet(%s)" % self
 
 
-class Query():
+class Query(object):
 
     """
     A query is a single query for the WikidataQuery API.
@@ -232,7 +232,7 @@ class Query():
 
         Sub-classes must override this method.
 
-        @raise NotImplementedError: Always raised by this abstract method
+        @raises NotImplementedError: Always raised by this abstract method
         """
         raise NotImplementedError
 
@@ -340,14 +340,14 @@ class Tree(Query):
     def validate(self):
         """Validate that the item, forward and reverse are all ints."""
         return (self.isOrContainsOnlyTypes(self.item, int) and
-                        self.isOrContainsOnlyTypes(self.forward, int) and
-                        self.isOrContainsOnlyTypes(self.reverse, int))
+                self.isOrContainsOnlyTypes(self.forward, int) and
+                self.isOrContainsOnlyTypes(self.reverse, int))
 
     def __str__(self):
         """Return the query string for the API."""
         return "%s[%s][%s][%s]" % (self.queryType, self.formatList(self.item),
-                                    self.formatList(self.forward),
-                                    self.formatList(self.reverse))
+                                   self.formatList(self.forward),
+                                   self.formatList(self.reverse))
 
 
 class Around(Query):
@@ -458,7 +458,7 @@ def fromClaim(claim):
                         % claim.type)
 
 
-class WikidataQuery():
+class WikidataQuery(object):
 
     """
     An interface to the WikidataQuery API.
@@ -474,7 +474,7 @@ class WikidataQuery():
     """
 
     def __init__(self, host="https://wdq.wmflabs.org", cacheDir=None,
-                    cacheMaxAge=60):
+                 cacheMaxAge=60):
         """Constructor."""
         self.host = host
         self.cacheMaxAge = cacheMaxAge
@@ -483,7 +483,7 @@ class WikidataQuery():
             self.cacheDir = cacheDir
         else:
             self.cacheDir = os.path.join(tempfile.gettempdir(),
-                                            "wikidataquery_cache")
+                                         "wikidataquery_cache")
 
     def getUrl(self, queryStr):
         """Get the URL given the query string."""
@@ -535,7 +535,7 @@ class WikidataQuery():
                         data = pickle.load(f)
                     except pickle.UnpicklingError:
                         pywikibot.warning(u"Couldn't read cached data from %s"
-                                            % cacheFile)
+                                          % cacheFile)
                         data = None
 
                 return data

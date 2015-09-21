@@ -41,7 +41,7 @@ The image "Flag.svg" has been uploaded, making the old "Flag.jpg" obsolete:
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 #
@@ -160,7 +160,7 @@ class ImageRobot(ReplaceBot):
             if not self.getOption('loose'):
                 replacements.append((image_regex,
                                      u'[[%s:%s\\g<parameters>]]'
-                                     % (self.site.image_namespace(),
+                                     % (self.site.namespaces.FILE,
                                         self.new_image)))
             else:
                 replacements.append((image_regex, self.new_image))

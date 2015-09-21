@@ -5,7 +5,7 @@
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 
@@ -15,10 +15,14 @@ import types
 import pywikibot.data.api as api
 import pywikibot.family
 import pywikibot.login
-import pywikibot.site
 import pywikibot.page
+import pywikibot.site
 
-from pywikibot.tools import MediaWikiVersion, PY2
+from pywikibot.tools import (
+    MediaWikiVersion,
+    PY2,
+    UnicodeType,
+)
 
 from tests.aspects import (
     unittest,
@@ -30,7 +34,6 @@ from tests.utils import allowed_failure, FakeLoginManager, PatchedHttp
 
 if not PY2:
     from urllib.parse import unquote_to_bytes
-    unicode = str
 else:
     from urllib import unquote_plus as unquote_to_bytes
 
@@ -40,7 +43,9 @@ class TestAPIMWException(DefaultSiteTestCase):
     """Test raising an APIMWException."""
 
     data = {'error': {'code': 'internal_api_error_fake',
-                      'info': 'Fake error message'}}
+                      'info': 'Fake error message'},
+            'servedby': 'unittest',
+            }
 
     def _dummy_request(self, **kwargs):
         self.assertIn('body', kwargs)
@@ -71,7 +76,7 @@ class TestAPIMWException(DefaultSiteTestCase):
             for param, value in self.assert_parameters.items():
                 self.assertIn(param, parameters)
                 if value is not None:
-                    if isinstance(value, unicode):
+                    if isinstance(value, UnicodeType):
                         value = value.split('|')
                     self.assertLessEqual(set(value), parameters[param])
         return self.data
@@ -153,6 +158,7 @@ class TestParamInfo(DefaultSiteTestCase):
     """Test ParamInfo."""
 
     def test_init(self):
+        """Test common initialization."""
         site = self.get_site()
         pi = api.ParamInfo(site)
         self.assertEqual(len(pi), 0)
@@ -188,6 +194,7 @@ class TestParamInfo(DefaultSiteTestCase):
         self.assertIn('query', pi._paraminfo)
 
     def test_init_pageset(self):
+        """Test initializing with only the pageset."""
         site = self.get_site()
         self.assertNotIn('query', api.ParamInfo.init_modules)
         pi = api.ParamInfo(site, set(['pageset']))
@@ -218,6 +225,7 @@ class TestParamInfo(DefaultSiteTestCase):
             self.assertGreater(len(generators_param['type']), 1)
 
     def test_generators(self):
+        """Test requesting the generator parameter."""
         site = self.get_site()
         pi = api.ParamInfo(site, set(['pageset', 'query']))
         self.assertEqual(len(pi), 0)
@@ -236,6 +244,7 @@ class TestParamInfo(DefaultSiteTestCase):
             self.assertEqual(pageset_generators_param, query_generators_param)
 
     def test_with_module_info(self):
+        """Test requesting the module info."""
         site = self.get_site()
         pi = api.ParamInfo(site)
         self.assertEqual(len(pi), 0)
@@ -264,6 +273,7 @@ class TestParamInfo(DefaultSiteTestCase):
         self.assertIn('protection', param['type'])
 
     def test_with_module_revisions(self):
+        """Test requesting the module revisions."""
         site = self.get_site()
         pi = api.ParamInfo(site)
         self.assertEqual(len(pi), 0)
@@ -292,6 +302,7 @@ class TestParamInfo(DefaultSiteTestCase):
         self.assertIn('user', param['type'])
 
     def test_multiple_modules(self):
+        """Test requesting multiple modules in one fetch."""
         site = self.get_site()
         pi = api.ParamInfo(site)
         self.assertEqual(len(pi), 0)
@@ -309,6 +320,7 @@ class TestParamInfo(DefaultSiteTestCase):
                          2 + len(pi.preloaded_modules))
 
     def test_with_invalid_module(self):
+        """Test requesting different kind of invalid modules."""
         site = self.get_site()
         pi = api.ParamInfo(site)
         self.assertEqual(len(pi), 0)
@@ -345,6 +357,7 @@ class TestParamInfo(DefaultSiteTestCase):
         self.assertRaises(KeyError, pi.submodules, 'edit')
 
     def test_query_modules_with_limits(self):
+        """Test query_modules_with_limits property."""
         site = self.get_site()
         pi = api.ParamInfo(site)
         self.assertIn('revisions', pi.query_modules_with_limits)
@@ -396,6 +409,7 @@ class TestParamInfo(DefaultSiteTestCase):
             self.assertEqual(value, '')
 
     def test_old_mode(self):
+        """Test the old mode explicitly."""
         site = self.get_site()
         pi = api.ParamInfo(site, modules_only_mode=False)
         pi.fetch(['info'])
@@ -411,6 +425,7 @@ class TestParamInfo(DefaultSiteTestCase):
         self.assertIn('revisions', pi.prefixes)
 
     def test_new_mode(self):
+        """Test the new modules-only mode explicitly."""
         site = self.get_site()
         if MediaWikiVersion(site.version()) < MediaWikiVersion('1.25wmf4'):
             raise unittest.SkipTest(
@@ -568,25 +583,30 @@ class TestDryPageGenerator(TestCase):
         # Add custom_name for this site namespace, to match the live site.
         if 'Wikipedia' not in self.site.namespaces:
             self.site.namespaces[4].custom_name = 'Wikipedia'
+            self.site.namespaces._namespace_names['wikipedia'] = self.site.namespaces[4]
 
     def test_results(self):
         """Test that PageGenerator yields pages with expected attributes."""
         self.assertPagelistTitles(self.gen, self.titles)
 
     def test_initial_limit(self):
+        """Test the default limit."""
         self.assertEqual(self.gen.limit, None)  # limit is initally None
 
     def test_set_limit_as_number(self):
+        """Test setting the limit using an int."""
         for i in range(-2, 4):
             self.gen.set_maximum_items(i)
             self.assertEqual(self.gen.limit, i)
 
     def test_set_limit_as_string(self):
+        """Test setting the limit using an int cast into a string."""
         for i in range(-2, 4):
             self.gen.set_maximum_items(str(i))
             self.assertEqual(self.gen.limit, i)
 
     def test_set_limit_not_number(self):
+        """Test setting the limit to not a number."""
         with self.assertRaisesRegex(
                 ValueError,
                 "invalid literal for int\(\) with base 10: 'test'"):
@@ -792,6 +812,7 @@ class TestCachedRequest(DefaultSiteTestCase):
     cached = False
 
     def test_normal_use(self):
+        """Test the caching of CachedRequest with an ordinary request."""
         mysite = self.get_site()
         mainpage = self.get_mainpage()
         # Run the cached query three times to ensure the
@@ -817,6 +838,7 @@ class TestCachedRequest(DefaultSiteTestCase):
         self.assertEqual(req2._cachetime, req3._cachetime)
 
     def test_internals(self):
+        """Test the caching of CachedRequest by faking a unique request."""
         mysite = self.get_site()
         # Run tests on a missing page unique to this test run so it can
         # not be cached the first request, but will be cached after.
@@ -879,11 +901,13 @@ class TestLazyLoginNotExistUsername(TestLazyLoginBase):
     # pywikibot is not connected to a tty. T100964
 
     def setUp(self):
+        """Patch the LoginManager to avoid UI interaction."""
         super(TestLazyLoginNotExistUsername, self).setUp()
         self.orig_login_manager = pywikibot.data.api.LoginManager
         pywikibot.data.api.LoginManager = FakeLoginManager
 
     def tearDown(self):
+        """Restore the original LoginManager."""
         pywikibot.data.api.LoginManager = self.orig_login_manager
         super(TestLazyLoginNotExistUsername, self).tearDown()
 
@@ -927,6 +951,7 @@ class TestBadTokenRecovery(TestCase):
     write = True
 
     def test_bad_token(self):
+        """Test the bad token recovery by corrupting the cache."""
         site = self.get_site()
         site.tokens._tokens.setdefault(site.user(), {})['edit'] = 'INVALID'
         page = pywikibot.Page(site, 'Pywikibot bad token test')

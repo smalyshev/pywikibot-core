@@ -5,7 +5,7 @@
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 #
@@ -61,7 +61,7 @@ class Family(object):
         self.alphabetic = [
             'ace', 'kbd', 'af', 'ak', 'als', 'am', 'ang', 'ab', 'ar', 'an',
             'arc', 'roa-rup', 'frp', 'as', 'ast', 'gn', 'av', 'ay', 'az', 'bm',
-            'bn', 'bjn', 'zh-min-nan', 'nan', 'map-bms', 'ba', 'be', 'be-x-old',
+            'bn', 'bjn', 'zh-min-nan', 'nan', 'map-bms', 'ba', 'be', 'be-tarask',
             'bh', 'bcl', 'bi', 'bg', 'bar', 'bo', 'bs', 'br', 'bxr', 'ca', 'cv',
             'ceb', 'cs', 'ch', 'cbk-zam', 'ny', 'sn', 'tum', 'cho', 'co', 'cy',
             'da', 'dk', 'pdc', 'de', 'dv', 'nv', 'dsb', 'dz', 'mh', 'et', 'el',
@@ -97,7 +97,7 @@ class Family(object):
             'ace', 'kbd', 'af', 'ak', 'als', 'am', 'ang', 'ab', 'ar', 'an',
             'arc', 'roa-rup', 'frp', 'as', 'ast', 'gn', 'av', 'ay', 'az', 'bjn',
             'id', 'ms', 'bm', 'bn', 'zh-min-nan', 'nan', 'map-bms', 'jv', 'su',
-            'ba', 'min', 'be', 'be-x-old', 'bh', 'bcl', 'bi', 'bar', 'bo', 'bs',
+            'ba', 'min', 'be', 'be-tarask', 'bh', 'bcl', 'bi', 'bar', 'bo', 'bs',
             'br', 'bug', 'bg', 'bxr', 'ca', 'ceb', 'cv', 'cs', 'ch', 'cbk-zam',
             'ny', 'sn', 'tum', 'cho', 'co', 'cy', 'da', 'dk', 'pdc', 'de', 'dv',
             'nv', 'dsb', 'na', 'dz', 'mh', 'et', 'el', 'eml', 'en', 'myv', 'es',
@@ -148,7 +148,7 @@ class Family(object):
             'ay': u'[a-záéíóúñ]*',
             'bar': u'[äöüßa-z]*',
             'be': u'[абвгґджзеёжзійклмнопрстуўфхцчшыьэюяćčłńśšŭźža-z]*',
-            'be-x-old': u'[абвгґджзеёжзійклмнопрстуўфхцчшыьэюяćčłńśšŭźža-z]*',
+            'be-tarask': u'[абвгґджзеёжзійклмнопрстуўфхцчшыьэюяćčłńśšŭźža-z]*',
             'bg': u'[a-zабвгдежзийклмнопрстуфхцчшщъыьэюя]*',
             'bm': u'[a-zàâçéèêîôûäëïöüùÇÉÂÊÎÔÛÄËÏÖÜÀÈÙ]*',
             'bs': u'[a-zćčžšđž]*',
@@ -356,7 +356,6 @@ class Family(object):
             'dmoz':             'dmoz',
             'dmozs':            'dmozs',
             'docbook':          'docbook',
-#            'doi':              'doi',
             'doom_wiki':        'doom_wiki',
             'download':         'download',
             'drae':             'drae',
@@ -691,7 +690,8 @@ class Family(object):
         }
 
         # A list of projects that share cross-project sessions.
-        self.cross_projects = []
+        if not hasattr(self, 'cross_projects'):
+            self.cross_projects = []
 
         # A list with the name for cross-project cookies.
         # default for wikimedia centralAuth extensions.
@@ -768,7 +768,8 @@ class Family(object):
 
         # Language codes of the largest wikis. They should be roughly sorted
         # by size.
-        self.languages_by_size = []
+        if not hasattr(self, 'languages_by_size'):
+            self.languages_by_size = []
 
         # Some languages belong to a group where the possibility is high that
         # equivalent articles have identical titles among the group.
@@ -787,7 +788,7 @@ class Family(object):
             ],
             # languages that use the cyrillic alphabet
             'cyril': [
-                'ab', 'av', 'ba', 'be', 'be-x-old', 'bg', 'bxr', 'ce', 'cu',
+                'ab', 'av', 'ba', 'be', 'be-tarask', 'bg', 'bxr', 'ce', 'cu',
                 'cv', 'kbd', 'koi', 'kv', 'ky', 'mk', 'lbe', 'mdf', 'mn', 'mo',
                 'myv', 'mhr', 'mrj', 'os', 'ru', 'rue', 'sah', 'tg', 'tk',
                 'udm', 'uk', 'xal',
@@ -951,7 +952,7 @@ class Family(object):
 
         Returns a string, not a compiled regular expression object.
 
-        This reads from the family file, and ''not'' from
+        This reads from the family file, and **not** from
         [[MediaWiki:Linktrail]], because the MW software currently uses a
         built-in linktrail from its message files and ignores the wiki
         value.
@@ -1058,13 +1059,19 @@ class Family(object):
         # Override this ONLY if the wiki family requires a path prefix
         return ''
 
-    def base_url(self, code, uri):
+    def _hostname(self, code):
+        """Return the protocol and hostname."""
         protocol = self.protocol(code)
         if protocol == 'https':
             host = self.ssl_hostname(code)
-            uri = self.ssl_pathprefix(code) + uri
         else:
             host = self.hostname(code)
+        return protocol, host
+
+    def base_url(self, code, uri):
+        protocol, host = self._hostname(code)
+        if protocol == 'https':
+            uri = self.ssl_pathprefix(code) + uri
         return urlparse.urljoin('{0}://{1}'.format(protocol, host), uri)
 
     def path(self, code):
@@ -1076,38 +1083,9 @@ class Family(object):
     def apipath(self, code):
         return '%s/api.php' % self.scriptpath(code)
 
-    # TODO: @deprecated('APISite.article_path')
-    # As soon as from_url does not need nicepath anymore
+    @deprecated('APISite.article_path')
     def nicepath(self, code):
         return '/wiki/'
-
-    def _get_path_regex(self, code):
-        """
-        Return a regex matching a site URL path.
-
-        @return: regex string
-        @rtype: unicode
-        """
-        # The trailing slash after path(code) is optional.
-        return ('(?:%s?|%s)' %
-                (re.escape(self.path(code) + '/'),
-                 re.escape(self.nicepath(code))))
-
-    def _get_url_regex(self, code):
-        """
-        Return a regex matching a site URL.
-
-        Regex match group 1 is the domain.
-
-        Does not make use of ssl_hostname or ssl_pathprefix.
-
-        @return: regex string
-        @rtype: unicode
-        """
-        return (r'(?:\/\/|%s\:\/\/)(%s)%s' %
-                (self.protocol(code),
-                 re.escape(self.hostname(code)),
-                 self._get_path_regex(code)))
 
     def rcstream_host(self, code):
         raise NotImplementedError("This family does not support RCStream")
@@ -1120,119 +1098,78 @@ class Family(object):
     def nice_get_address(self, code, title):
         return '%s%s' % (self.nicepath(code), title)
 
-    def _get_regex_all(self):
-        """
-        Return a regex matching any site.
-
-        It is using Family methods with code set to 'None' initially.
-        That will raise KeyError if the Family methods use the code to
-        lookup the correct value in a dictionary such as C{langs}.
-        On KeyError, it retries it with each key from C{langs}.
-
-        @return: regex string
-        @rtype: unicode
-        """
-        if hasattr(self, '_regex_all'):
-            return self._regex_all
-
-        try:
-            self._regex_all = self._get_url_regex(None)
-            return self._regex_all
-        except KeyError:
-            # Probably automatically generated family
-            pass
-
-        # If there is only one code, use it.
-        if len(self.langs) == 1:
-            code = next(iter(self.langs.keys()))
-            self._regex_all = self._get_url_regex(code)
-            return self._regex_all
-
-        try:
-            protocol = self.protocol(None) + '\:\/\/'
-        except KeyError:
-            protocol = None
-
-        try:
-            hostname = re.escape(self.hostname(None))
-        except KeyError:
-            hostname = None
-
-        try:
-            path = self._get_path_regex(None)
-        except KeyError:
-            path = None
-
-        # If two or more of the three above varies, the regex cant be optimised
-        none_count = [protocol, hostname, path].count(None)
-
-        if none_count > 1:
-            self._regex_all = ('(?:%s)'
-                               % '|'.join(self._get_url_regex(code)
-                                          for code in self.langs.keys()))
-            return self._regex_all
-
-        if not protocol:
-            protocols = set(self.protocol(code) + '\:\/\/'
-                            for code in self.langs.keys())
-            protocol = '|'.join(protocols)
-
-        # Allow protocol neutral '//'
-        protocol = '(?:\/\/|%s)' % protocol
-
-        if not hostname:
-            hostnames = set(re.escape(self.hostname(code))
-                            for code in self.langs.keys())
-            hostname = '|'.join(hostnames)
-
-        # capture hostname
-        hostname = '(' + hostname + ')'
-
-        if not path:
-            regexes = set(self._get_path_regex(code)
-                          for code in self.langs.keys())
-            path = '(?:%s)' % '|'.join(regexes)
-
-        self._regex_all = protocol + hostname + path
-        return self._regex_all
+    # List of codes which aren't returned by from_url; True returns None always
+    _ignore_from_url = []
 
     def from_url(self, url):
         """
         Return whether this family matches the given url.
 
-        It must match URLs generated via C{self.langs} and
-        L{Family.nice_get_address} or L{Family.path}. If the protocol doesn't
-        match but is present in the interwikimap it'll log this.
+        It is first checking if a domain of this family is in the the domain of
+        the URL. If that is the case it's checking all codes and verifies that
+        a path generated via L{APISite.article_path} and L{Family.path} matches
+        the path of the URL together with the hostname for that code.
 
-        It ignores $1 in the url, and anything that follows it.
+        It is using L{Family.domains} to first check if a domain applies and
+        then iterates over L{Family.codes} to actually determine which code
+        applies.
 
+        @param url: the URL which may contain a C{$1}. If it's missing it is
+            assumed to be at the end and if it's present nothing is allowed
+            after it.
+        @type url: str
         @return: The language code of the url. None if that url is not from
             this family.
         @rtype: str or None
-        @raises RuntimeError: Mismatch between Family langs dictionary and
-            URL regex.
+        @raises RuntimeError: When there are multiple languages in this family
+            which would work with the given URL.
+        @raises ValueError: When text is present after $1.
         """
-        if '$1' in url:
-            url = url[:url.find('$1')]
-
-        url_match = re.match(self._get_regex_all(), url)
-        if not url_match:
+        if self._ignore_from_url is True:
             return None
+        else:
+            ignored = self._ignore_from_url
 
-        for code, domain in self.langs.items():
-            if domain is None:
-                warn('Family(%s): langs missing domain names' % self.name,
-                     FamilyMaintenanceWarning)
-            elif domain == url_match.group(1):
-                return code
+        parsed = urlparse.urlparse(url)
+        if not re.match('^(https?)?$', parsed.scheme):
+            return None
+        path = parsed.path
+        if parsed.query:
+            path += '?' + parsed.query
 
-        # if domain was None, this will return the only possible code.
-        if len(self.langs) == 1:
-            return next(iter(self.langs))
+        # Discard $1 and everything after it
+        path, _, suffix = path.partition('$1')
+        if suffix:
+            raise ValueError('Text after the $1 placeholder is not supported '
+                             '(T111513).')
 
-        raise RuntimeError(
-            'Family(%s): matched regex has not matched a domain in langs'
-            % self.name)
+        matched_sites = []
+        for domain in self.domains:
+            if domain in parsed.netloc:
+                break
+        else:
+            domain = False
+        if domain is not False:
+            for code in self.codes:
+                if code in ignored:
+                    continue
+                if self._hostname(code)[1] == parsed.netloc:
+                    # Use the code and family instead of the url
+                    # This is only creating a Site instance if domain matches
+                    site = pywikibot.Site(code, self.name)
+                    pywikibot.log('Found candidate {0}'.format(site))
+
+                    if path in site._interwiki_urls():
+                        matched_sites += [site]
+
+        if len(matched_sites) == 1:
+            return matched_sites[0].code
+        elif not matched_sites:
+            return None
+        else:
+            raise RuntimeError(
+                'Found multiple matches for URL "{0}": {1}'
+                .format(url, ', '.join(str(s) for s in matched_sites)))
 
     def maximum_GET_length(self, code):
         return config.maximum_GET_length
@@ -1399,10 +1336,140 @@ class Family(object):
                                            for (old, new) in data.items()
                                            if new is not None)
 
+    @property
+    def domains(self):
+        """
+        Get list of unique domain names included in this family.
+
+        These domains may also exist in another family.
+
+        @rtype: iterable of str
+        """
+        return set(self.langs.values())
+
+    @property
+    def codes(self):
+        """
+        Get list of codes used by this family.
+
+        @rtype: iterable of str
+        """
+        return set(self.langs.keys())
+
+
+class SingleSiteFamily(Family):
+
+    """Single site family."""
+
+    def __init__(self):
+        """Constructor."""
+        if not hasattr(self, 'code'):
+            self.code = self.name
+
+        assert self.domain
+
+        super(SingleSiteFamily, self).__init__()
+
+        self.langs = {self.code: self.domain}
+
+    @property
+    def domains(self):
+        """Return the full domain name of the site."""
+        return (self.domain, )
+
+    def hostname(self, code):
+        return self.domain
+
+
+class SubdomainFamily(Family):
+
+    """Multi site wikis that are subdomains of the same top level domain."""
+
+    def __init__(self):
+        """Constructor."""
+        assert self.domain
+
+        codes = self.codes
+        if hasattr(self, 'test_codes'):
+            codes = codes + self.test_codes
+
+        self.langs = dict(
+            (code, '%s.%s' % (code, self.domain)) for code in codes)
+
+        super(SubdomainFamily, self).__init__()
+
+    @property
+    def codes(self):
+        """Property listing family codes."""
+        if hasattr(self, 'languages_by_size'):
+            return self.languages_by_size
+        raise NotImplementedError(
+            'Family %s needs property "languages_by_size" or "codes"'
+            % self.name)
+
+    @property
+    def domains(self):
+        """Return the domain name of the sites in this family."""
+        return [self.domain]
+
+
+class WikiaFamily(Family):
+
+    """Common features of Wikia families."""
+
+    def scriptpath(self, code):
+        """Return the script path for this family."""
+        return ''
+
 
 class WikimediaFamily(Family):
 
     """Class for all wikimedia families."""
+
+    multi_language_content_families = [
+        'wikipedia', 'test',
+        'wiktionary', 'wikisource',
+        'wikibooks', 'wikinews', 'wikiquote',
+        'wikiversity', 'wikivoyage',
+    ]
+
+    wikimedia_org_content_families = [
+        'commons', 'incubator', 'species',
+    ]
+
+    wikimedia_org_meta_families = [
+        'meta', 'outreach', 'strategy',
+        'wikimediachapter',
+    ]
+
+    wikimedia_org_other_families = [
+        'wikitech',
+    ]
+
+    other_content_families = [
+        'wikidata',
+        'mediawiki',
+    ]
+
+    content_families = set(
+        multi_language_content_families +
+        wikimedia_org_content_families +
+        other_content_families
+    )
+
+    wikimedia_org_families = set(
+        wikimedia_org_content_families +
+        wikimedia_org_meta_families +
+        wikimedia_org_other_families
+    )
+
+    # CentralAuth cross avaliable projects.
+    cross_projects = set(
+        multi_language_content_families +
+        wikimedia_org_content_families +
+        wikimedia_org_meta_families +
+        other_content_families
+    )
 
     # Code mappings which are only an alias, and there is no 'old' wiki.
     # For all except 'nl_nds', subdomains do exist as a redirect, but that
@@ -1426,6 +1493,9 @@ class WikimediaFamily(Family):
 
         # miss-spelling
         'nl_nds': 'nl-nds',
+
+        # Renamed; see T11823
+        'be-x-old': 'be-tarask',
     }
 
     # Not open for edits; stewards can still edit.
@@ -1441,15 +1511,16 @@ class WikimediaFamily(Family):
         'mo': 'ro',
     }
 
-    def __init__(self):
-        super(WikimediaFamily, self).__init__()
+    @property
+    def domain(self):
+        """Domain property."""
+        if self.name in self.multi_language_content_families + self.other_content_families:
+            return self.name + '.org'
+        elif self.name in self.wikimedia_org_families:
+            return 'wikimedia.org'
 
-        # CentralAuth cross avaliable projects.
-        self.cross_projects = [
-            'commons', 'incubator', 'mediawiki', 'meta', 'species', 'test',
-            'wikibooks', 'wikidata', 'wikinews', 'wikipedia', 'wikiquote',
-            'wikisource', 'wikiversity', 'wiktionary',
-        ]
+        raise NotImplementedError(
+            'Family %s needs to define property \'domain\'' % self.name)
 
     @property
     def interwiki_removals(self):
@@ -1472,18 +1543,26 @@ class WikimediaFamily(Family):
         return 'stream.wikimedia.org'
 
 
-class AutoFamily(Family):
+class WikimediaOrgFamily(SingleSiteFamily, WikimediaFamily):
+
+    """Single site family for sites hosted at C{*.wikimedia.org}."""
+
+    @property
+    def domain(self):
+        """Return the parents domain with a subdomain prefix."""
+        return '{0}.wikimedia.org'.format(self.name)
+
+
+class AutoFamily(SingleSiteFamily):
 
     """Family that automatically loads the site configuration."""
 
-    def __init__(self, name, url, site=None):
+    def __init__(self, name, url):
         """Constructor."""
-        super(AutoFamily, self).__init__()
         self.name = name
         self.url = urlparse.urlparse(url)
-        self.langs = {
-            name: self.url.netloc
-        }
+        self.domain = self.url.netloc
+        super(AutoFamily, self).__init__()
 
     def protocol(self, code):
         """Return the protocol of the URL."""

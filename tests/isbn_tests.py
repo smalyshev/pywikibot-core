@@ -5,7 +5,7 @@
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 import pywikibot
 
@@ -19,10 +19,12 @@ from scripts.isbn import (
     getIsbn, hyphenateIsbnNumbers, convertIsbn10toIsbn13,
     main
 )
+
 from tests.aspects import (
     unittest, TestCase, DefaultDrySiteTestCase,
     WikibaseTestCase, ScriptMainTestCase,
 )
+from tests.bot_tests import TWNBotTestCase
 
 
 class TestCosmeticChangesISBN(DefaultDrySiteTestCase):
@@ -40,6 +42,7 @@ class TestCosmeticChangesISBN(DefaultDrySiteTestCase):
         self.assertEqual(text, ' ISBN 978-0-9752298-0-4 ')
 
     def test_invalid_isbn(self):
+        """Test that it'll fail when the ISBN is invalid."""
         cc = CosmeticChangesToolkit(self.site, namespace=0)
 
         self.assertRaises(Exception, cc.fix_ISBN, 'ISBN 0975229LOL')  # Invalid characters
@@ -48,6 +51,7 @@ class TestCosmeticChangesISBN(DefaultDrySiteTestCase):
         self.assertRaises(Exception, cc.fix_ISBN, 'ISBN 09752X9801')  # X in the middle
 
     def test_ignore_invalid_isbn(self):
+        """Test fixing ISBN numbers with an invalid ISBN."""
         cc = CosmeticChangesToolkit(self.site, namespace=0, ignore=CANCEL_MATCH)
 
         text = cc.fix_ISBN(' ISBN 0975229LOL ISBN 9780975229804 ')
@@ -139,15 +143,18 @@ class TestIsbnBot(ScriptMainTestCase):
     write = True
 
     def setUp(self):
+        """Patch the Bot class to avoid an actual write."""
         self._original_userPut = Bot.userPut
         Bot.userPut = userPut_dummy
         super(TestIsbnBot, self).setUp()
 
     def tearDown(self):
+        """Unpatch the Bot class."""
         Bot.userPut = self._original_userPut
         super(TestIsbnBot, self).tearDown()
 
     def test_isbn(self):
+        """Test the ISBN bot."""
         site = self.get_site()
         p1 = pywikibot.Page(site, 'User:M4tx/IsbnTest')
         # Create the page if it does not exist
@@ -159,10 +166,11 @@ class TestIsbnBot(ScriptMainTestCase):
 
 
 def userPut_dummy(self, page, oldtext, newtext, **kwargs):
+    """Avoid that userPut writes."""
     TestIsbnBot.newtext = newtext
 
 
-class TestIsbnWikibaseBot(ScriptMainTestCase, WikibaseTestCase):
+class TestIsbnWikibaseBot(ScriptMainTestCase, WikibaseTestCase, TWNBotTestCase):
 
     """Test isbnbot on Wikibase site with non-write patching."""
 
@@ -195,6 +203,7 @@ class TestIsbnWikibaseBot(ScriptMainTestCase, WikibaseTestCase):
             % cls.__name__)
 
     def setUp(self):
+        """Patch Claim.setTarget and ItemPage.editEntity which write."""
         TestIsbnWikibaseBot._original_setTarget = Claim.setTarget
         Claim.setTarget = setTarget_dummy
         TestIsbnWikibaseBot._original_editEntity = ItemPage.editEntity
@@ -202,11 +211,13 @@ class TestIsbnWikibaseBot(ScriptMainTestCase, WikibaseTestCase):
         super(TestIsbnWikibaseBot, self).setUp()
 
     def tearDown(self):
+        """Unpatch the dummy methods."""
         Claim.setTarget = TestIsbnWikibaseBot._original_setTarget
         ItemPage.editEntity = TestIsbnWikibaseBot._original_editEntity
         super(TestIsbnWikibaseBot, self).tearDown()
 
     def test_isbn(self):
+        """Test using the bot and wikibase."""
         main('-page:' + self.test_page_qid, '-always', '-format')
         self.assertEqual(self.setTarget_value, '0-9752298-0-X')
         main('-page:' + self.test_page_qid, '-always', '-to13')
@@ -214,11 +225,13 @@ class TestIsbnWikibaseBot(ScriptMainTestCase, WikibaseTestCase):
 
 
 def setTarget_dummy(self, value):
+    """Avoid that setTarget writes."""
     TestIsbnWikibaseBot.setTarget_value = value
     TestIsbnWikibaseBot._original_setTarget(self, value)
 
 
 def editEntity_dummy(self, data=None, **kwargs):
+    """Avoid that editEntity writes."""
     pass
 
 if __name__ == "__main__":

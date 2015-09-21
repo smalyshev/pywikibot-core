@@ -1,6 +1,6 @@
 # -*- coding: utf-8  -*-
 """Collection of fixes for tests."""
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 # flake8 cannot detect that fixes is defined via pywikibot.fixes
 if 'fixes' not in globals():
@@ -57,5 +57,23 @@ fixes['has-msg-multiple'] = {
         ('1', '2'),
         ('3', '4'),
         ('5', '6'),
+    ]
+}
+
+fixes['no-msg-title-exceptions'] = {
+    'regex': False,
+    'exceptions': {
+        'title': ['Declined'],
+        'require-title': ['Allowed'],
+    },
+    'replacements': [
+        ('1', '2'),
+    ]
+}
+
+fixes['no-msg-callable'] = {
+    'regex': False,
+    'replacements': [
+        ('1', lambda match: str(match.start())),
     ]
 }

@@ -11,7 +11,7 @@ This module is responsible for
     - URL-encoding all data
     - Basic HTTP error handling
 """
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 #
 # (C) Pywikibot team, 2007-2015
@@ -64,8 +64,6 @@ if (isinstance(pywikibot.config2.socket_timeout, tuple) and
                       'two.')
     pywikibot.config2.socket_timeout = min(pywikibot.config2.socket_timeout)
 
-session = requests.Session()
-
 cookie_jar = cookielib.LWPCookieJar(
     config.datafilepath('pywikibot.lwp'))
 try:
@@ -74,6 +72,9 @@ except (IOError, cookielib.LoadError):
     pywikibot.debug(u"Loading cookies failed.", _logger)
 else:
     pywikibot.debug(u"Loaded cookies from file.", _logger)
+
+session = requests.Session()
+session.cookies = cookie_jar
 
 
 # Prepare flush on quit
@@ -284,12 +285,16 @@ def _http_process(session, http_request):
             auth = None
         else:
             auth = requests_oauthlib.OAuth1(*auth)
-    cookies = cookie_jar
     timeout = config.socket_timeout
     try:
+        ignore_validation = http_request.kwargs.pop(
+            'disable_ssl_certificate_validation', False)
+        # Note that the connections are pooled which mean that a future
+        # HTTPS request can succeed even if the certificate is invalid and
+        # verify=True, when a request with verify=False happened before
         response = session.request(method, uri, data=body, headers=headers,
-                                   cookies=cookies, auth=auth, timeout=timeout,
-                                   verify=True)
+                                   auth=auth, timeout=timeout,
+                                   verify=not ignore_validation)
     except Exception as e:
         http_request.data = e
     else:

@@ -11,7 +11,7 @@ mixin to show cache usage is included.
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import print_function, unicode_literals
+from __future__ import absolute_import, print_function, unicode_literals
 __version__ = '$Id$'
 """
     TODO:
@@ -43,12 +43,13 @@ import pywikibot
 
 import pywikibot.config2 as config
 
-from pywikibot import log, Site
-from pywikibot.exceptions import ServerError, NoUsername
-from pywikibot.site import BaseSite
-from pywikibot.family import WikimediaFamily
+from pywikibot import Site
 from pywikibot.comms import http
 from pywikibot.data.api import Request as _original_Request
+from pywikibot.exceptions import ServerError, NoUsername
+from pywikibot.family import WikimediaFamily
+from pywikibot.site import BaseSite
+from pywikibot.tools import PY2
 
 import tests
 
@@ -57,6 +58,8 @@ from tests.utils import (
     add_metaclass, execute_pwb, DrySite, DryRequest,
     WarningSourceSkipContextManager,
 )
+
+OSWIN32 = (sys.platform == 'win32')
 
 
 class TestCaseBase(unittest.TestCase):
@@ -246,66 +249,6 @@ class TestCaseBase(unittest.TestCase):
     assertPagelistTitles = assertPageTitlesEqual
 
 
-class TestLoggingMixin(TestCaseBase):
-
-    """Logging for test cases."""
-
-    @classmethod
-    def setUpClass(cls):
-        """Set up test class."""
-        cls._log_prefix = inspect.getfile(cls) + ':' + cls.__name__
-
-    def setUp(self):
-        """Set up each unit test."""
-        super(TestLoggingMixin, self).setUp()
-
-        if hasattr(self, '_outcomeForDoCleanups'):
-            # Python 3 unittest & nose
-            outcome = self._outcomeForDoCleanups
-        elif hasattr(self, '_outcome'):
-            # Python 3.4 nose
-            outcome = self._outcome
-        elif hasattr(self, '_resultForDoCleanups'):
-            # Python 2 unittest & nose
-            outcome = self._resultForDoCleanups
-        else:
-            return
-
-        self._previous_errors = len(outcome.errors)
-        # nose 3.4 doesn't has failures
-        if hasattr(outcome, 'failures'):
-            self._previous_failures = len(outcome.failures)
-
-        log('START ' + self._log_prefix + '.' + self._testMethodName)
-
-    def tearDown(self):
-        """Tear down test."""
-        super(TestLoggingMixin, self).tearDown()
-
-        if hasattr(self, '_outcomeForDoCleanups'):
-            # Python 3 unittest & nose
-            outcome = self._outcomeForDoCleanups
-        elif hasattr(self, '_outcome'):
-            # Python 3.4 nose
-            outcome = self._outcome
-        elif hasattr(self, '_resultForDoCleanups'):
-            # Python 2 unittest & nose
-            outcome = self._resultForDoCleanups
-        else:
-            return
-
-        if len(outcome.errors) > self._previous_errors:
-            status = ' NOT OK: ERROR'
-        # nose 3.4 doesn't has failures
-        elif (hasattr(outcome, 'failures') and
-                len(outcome.failures) > self._previous_failures):
-            status = ' NOT OK: FAILURE'
-        else:
-            status = ' OK'
-
-        log('END ' + self._log_prefix + '.' + self._testMethodName + status)
-
-
 class TestTimerMixin(TestCaseBase):
 
     """Time each test and report excessive durations."""
@@ -329,6 +272,25 @@ class TestTimerMixin(TestCaseBase):
             sys.stdout.flush()
 
         super(TestTimerMixin, self).tearDown()
+
+
+def require_modules(*required_modules):
+    """Require that the given list of modules can be imported."""
+    def test_requirement(obj):
+        """Test the requirement and return an optionally decorated object."""
+        missing = []
+        for required_module in required_modules:
+            try:
+                __import__(required_module, globals(), locals(), [], 0)
+            except ImportError:
+                missing += [required_module]
+        if missing:
+            return unittest.skip('{0} not installed'.format(
+                ', '.join(missing)))(obj)
+        else:
+            return obj
+
+    return test_requirement
 
 
 class DisableSiteMixin(TestCaseBase):
@@ -492,13 +454,13 @@ class CheckHostnameMixin(TestCaseBase):
                 if '://' not in hostname:
                     hostname = 'http://' + hostname
                 r = http.fetch(uri=hostname,
+                               method='HEAD',
                                default_error_handling=False)
                 if r.exception:
                     e = r.exception
                 else:
                     if r.status not in [200, 301, 302, 303, 307, 308]:
                         raise ServerError('HTTP status: %d' % r.status)
-                    r.content  # default decode may raise exception
             except Exception as e2:
                 pywikibot.error('%s: accessing %s caused exception:'
                                 % (cls.__name__, hostname))
@@ -539,10 +501,15 @@ class SiteWriteMixin(TestCaseBase):
         Otherwise the test class is skipped unless environment variable
         PYWIKIBOT2_TEST_WRITE is set to 1.
         """
+        if issubclass(cls, ForceCacheMixin):
+            raise Exception(
+                '%s can not be a subclass of both '
+                'SiteWriteMixin and ForceCacheMixin'
+                % cls.__name__)
+
         super(SiteWriteMixin, cls).setUpClass()
 
         site = cls.get_site()
-        assert 'test' in (site.family.name, site.code)
 
         if cls.write == -1:
             env_var = 'PYWIKIBOT2_TEST_WRITE_FAIL'
@@ -555,11 +522,13 @@ class SiteWriteMixin(TestCaseBase):
                 'Set %s=1 to enable.'
                 % (cls.__name__, env_var))
 
-        if issubclass(cls, ForceCacheMixin):
+        if (not hasattr(site.family, 'test_codes') or
+                site.code not in site.family.test_codes):
             raise Exception(
-                '%s can not be a subclass of both '
-                'SiteEditTestCase and ForceCacheMixin'
-                % cls.__name__)
+                '%s should only be run on test sites. '
+                'To run this test, add \'%s\' to the %s family '
+                'attribute \'test_codes\'.'
+                % (cls.__name__, site.code, site.family.name))
 
 
 class RequireUserMixin(TestCaseBase):
@@ -593,6 +562,9 @@ class RequireUserMixin(TestCaseBase):
         for site in cls.sites.values():
             cls.require_site_user(site['family'], site['code'], sysop)
 
+            if hasattr(cls, 'oauth') and cls.oauth:
+                continue
+
             try:
                 site['site'].login(sysop)
             except NoUsername:
@@ -612,7 +584,15 @@ class RequireUserMixin(TestCaseBase):
         Login to the site if it is not logged in.
         """
         super(RequireUserMixin, self).setUp()
+        self._reset_login()
 
+    def tearDown(self):
+        """Log back into the site."""
+        super(RequireUserMixin, self).tearDown()
+        self._reset_login()
+
+    def _reset_login(self):
+        """Login to all sites."""
         sysop = hasattr(self, 'sysop') and self.sysop
 
         # There may be many sites, and setUp doesnt know
@@ -621,8 +601,12 @@ class RequireUserMixin(TestCaseBase):
         for site in self.sites.values():
             site = site['site']
 
+            if hasattr(self, 'oauth') and self.oauth:
+                continue
+
             if not site.logged_in(sysop):
                 site.login(sysop)
+            assert(site.user())
 
     def get_userpage(self, site=None):
         """Create a User object for the user's userpage."""
@@ -676,7 +660,14 @@ class MetaTestCaseClass(type):
                  for attr_name in dct
                  if attr_name.startswith('test')]
 
-        dct['abstract_class'] = len(tests) == 0
+        base_tests = []
+        if not tests:
+            for base in bases:
+                base_tests += [attr_name
+                               for attr_name, attr in base.__dict__.items()
+                               if attr_name.startswith('test') and callable(attr)]
+
+        dct['abstract_class'] = not tests and not base_tests
 
         # Bail out if it is the abstract class.
         if dct['abstract_class']:
@@ -685,7 +676,7 @@ class MetaTestCaseClass(type):
         # Inherit superclass attributes
         for base in bases:
             for key in ('pwb', 'net', 'site', 'user', 'sysop', 'write',
-                        'sites', 'family', 'code', 'dry', 'hostname',
+                        'sites', 'family', 'code', 'dry', 'hostname', 'oauth',
                         'hostnames', 'cached', 'cacheinfo', 'wikibase'):
                 if hasattr(base, key) and key not in dct:
                     # print('%s has %s; copying to %s'
@@ -735,7 +726,7 @@ class MetaTestCaseClass(type):
         if (('sites' not in dct and 'site' not in dct) or
                 ('site' in dct and not dct['site'])):
             # Prevent use of pywikibot.Site
-            bases = tuple([DisableSiteMixin] + list(bases))
+            bases = cls.add_base(bases, DisableSiteMixin)
 
             # 'pwb' tests will _usually_ require a site.  To ensure the
             # test class dependencies are declarative, this requires the
@@ -769,26 +760,29 @@ class MetaTestCaseClass(type):
         # The following section is only processed if the test uses sites.
 
         if 'dry' in dct and dct['dry']:
-            bases = tuple([DisconnectedSiteMixin] + list(bases))
+            bases = cls.add_base(bases, DisconnectedSiteMixin)
             del dct['net']
         else:
             dct['net'] = True
 
         if 'cacheinfo' in dct and dct['cacheinfo']:
-            bases = tuple([CacheInfoMixin] + list(bases))
+            bases = cls.add_base(bases, CacheInfoMixin)
 
         if 'cached' in dct and dct['cached']:
-            bases = tuple([ForceCacheMixin] + list(bases))
+            bases = cls.add_base(bases, ForceCacheMixin)
 
-        bases = tuple([CheckHostnameMixin] + list(bases))
+        if 'net' in dct and dct['net']:
+            bases = cls.add_base(bases, CheckHostnameMixin)
+        else:
+            assert not hostnames, 'net must be True with hostnames defined'
 
         if 'write' in dct and dct['write']:
             if 'user' not in dct:
                 dct['user'] = True
-            bases = tuple([SiteWriteMixin] + list(bases))
+            bases = cls.add_base(bases, SiteWriteMixin)
 
         if ('user' in dct and dct['user']) or ('sysop' in dct and dct['sysop']):
-            bases = tuple([RequireUserMixin] + list(bases))
+            bases = cls.add_base(bases, RequireUserMixin)
 
         for test in tests:
             test_func = dct[test]
@@ -811,7 +805,7 @@ class MetaTestCaseClass(type):
 
             # create test methods processed by unittest
             for (key, sitedata) in dct['sites'].items():
-                test_name = test + '_' + key
+                test_name = test + '_' + key.replace('-', '_')
 
                 dct[test_name] = wrap_method(key, sitedata, dct[test])
 
@@ -822,9 +816,16 @@ class MetaTestCaseClass(type):
 
         return super(MetaTestCaseClass, cls).__new__(cls, name, bases, dct)
 
+    @staticmethod
+    def add_base(bases, subclass):
+        """Return a tuple of bases with the subclasses added if not already."""
+        if not any(issubclass(base, subclass) for base in bases):
+            bases = (subclass, ) + bases
+        return bases
+
 
 @add_metaclass
-class TestCase(TestTimerMixin, TestLoggingMixin, TestCaseBase):
+class TestCase(TestTimerMixin, TestCaseBase):
 
     """Run tests on pre-defined sites."""
 
@@ -869,7 +870,7 @@ class TestCase(TestTimerMixin, TestLoggingMixin, TestCaseBase):
                                     interface=interface)
             if 'hostname' not in data and 'site' in data:
                 try:
-                    data['hostname'] = data['site'].hostname()
+                    data['hostname'] = data['site'].base_url(data['site'].path())
                 except KeyError:
                     # The family has defined this as obsolete
                     # without a mapping to a hostname.
@@ -945,7 +946,7 @@ class TestCase(TestTimerMixin, TestLoggingMixin, TestCaseBase):
                 return self._mainpage
 
         mainpage = pywikibot.Page(site, site.siteinfo['mainpage'])
-        if mainpage.isRedirectPage():
+        if not isinstance(site, DrySite) and mainpage.isRedirectPage():
             mainpage = mainpage.getRedirectTarget()
 
         if force:
@@ -1017,6 +1018,44 @@ class CapturingTestCase(TestCase):
             return self.patch_assert(result)
         else:
             return result
+
+
+class PatchingTestCase(TestCase):
+
+    """Easily patch and unpatch instances."""
+
+    @staticmethod
+    def patched(obj, attr_name):
+        """Apply patching information."""
+        def add_patch(decorated):
+            decorated._patching = (obj, attr_name)
+            return decorated
+        return add_patch
+
+    def patch(self, obj, attr_name, replacement):
+        """
+        Patch the obj's attribute with the replacement.
+
+        It will be reset after each C{tearDown}.
+        """
+        self._patched_instances += [(obj, attr_name, getattr(obj, attr_name))]
+        setattr(obj, attr_name, replacement)
+
+    def setUp(self):
+        """Set up the test by initializing the patched list."""
+        super(TestCaseBase, self).setUp()
+        self._patched_instances = []
+        for attribute in dir(self):
+            attribute = getattr(self, attribute)
+            if callable(attribute) and hasattr(attribute, '_patching'):
+                self.patch(attribute._patching[0], attribute._patching[1],
+                           attribute)
+
+    def tearDown(self):
+        """Tear down the test by unpatching the patched."""
+        for patched in self._patched_instances:
+            setattr(*patched)
+        super(TestCaseBase, self).tearDown()
 
 
 class SiteAttributeTestCase(TestCase):
@@ -1273,7 +1312,7 @@ class PwbTestCase(TestCase):
         if 'PYWIKIBOT2_DIR' in os.environ:
             self.orig_pywikibot_dir = os.environ['PYWIKIBOT2_DIR']
         base_dir = pywikibot.config.base_dir
-        if sys.platform == 'win32' and sys.version_info[0] < 3:
+        if OSWIN32 and PY2:
             base_dir = str(base_dir)
         os.environ[str('PYWIKIBOT2_DIR')] = base_dir
 

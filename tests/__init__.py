@@ -5,12 +5,11 @@
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 
 import os
-import sys
 import warnings
 
 __all__ = ('requests', '_cache_dir', 'TestRequest',
@@ -20,23 +19,23 @@ __all__ = ('requests', '_cache_dir', 'TestRequest',
 # - requests is mandatory
 # - future is needed as a fallback for python 2.6,
 #   however if unavailable this will fail on use; see pywikibot/tools.py
+# - unittest2; see below
 # - mwparserfromhell is optional, so is only imported in textlib_tests
-try:
-    import requests  # noqa
-except ImportError as e:
-    print("ImportError: %s" % e)
-    sys.exit(1)
+import requests  # noqa
 
-if sys.version_info < (2, 7, 3):
-    # Unittest2 is a backport of python 2.7s unittest module to python 2.6
+from pywikibot.tools import PYTHON_VERSION
+
+if PYTHON_VERSION < (2, 7, 3):
+    # unittest2 is a backport of python 2.7s unittest module to python 2.6
     # Also use unittest2 for python 2.7.2 (T106512)
     import unittest2 as unittest
 else:
     import unittest
 
+import pywikibot.data.api
+
 from pywikibot import config
 from pywikibot import i18n
-import pywikibot.data.api
 from pywikibot.data.api import Request as _original_Request
 from pywikibot.data.api import CachedRequest
 
@@ -50,11 +49,16 @@ _root_dir = os.path.split(_tests_dir)[0]
 _pwb_py = os.path.join(_root_dir, 'pwb.py')
 
 library_test_modules = [
+    'python',
     'deprecation',
     'ui',
+    'ui_options',
+    'thread',
     'tests',
     'date',
+    'timestamp',
     'mediawikiversion',
+    'tools',
     'tools_chars',
     'tools_ip',
     'xmlreader',
@@ -64,31 +68,54 @@ library_test_modules = [
     'dry_api',
     'dry_site',
     'api',
+    'exceptions',
+    'oauth',
     'family',
     'site',
     'link',
     'interwiki_link',
+    'interwiki_graph',
+    'basepage',
     'page',
     'category',
     'file',
+    'djvu',
+    'proofreadpage',
     'edit_failure',
+    'edit',
+    'logentry',
     'timestripper',
     'pagegenerators',
+    'cosmetic_changes',
     'wikidataquery',
+    'wikistats',
     'weblib',
     'i18n',
-    'ui',
+    'tk',
     'wikibase',
     'wikibase_edit',
+    'flow',
+    'flow_edit',
     'upload',
+    'site_detect',
+    'bot',
 ]
 
 script_test_modules = [
     'pwb',
     'script',
+    'l10n',
     'archivebot',
+    'checkimages',
     'data_ingestion',
     'deletionbot',
+    'disambredir',
+    'isbn',
+    'protectbot',
+    'reflinks',
+    'replacebot',
+    'uploadbot',
+    'weblinkchecker',
     'cache',
 ]
 
@@ -96,6 +123,7 @@ disabled_test_modules = [
     'tests',  # tests of the tests package
     # weblib is deprecated, the tests fail for weblib,
     # but the tests are run in weblinkchecker_tests.
+    'l10n',
     'weblib',
 ]
 if not i18n.messages_available():
@@ -130,6 +158,10 @@ extra_test_modules = sorted(_unknown_test_modules())
 
 test_modules = library_test_modules + extra_test_modules + script_test_modules
 
+if 'PYWIKIBOT_TEST_MODULES' in os.environ:
+    _enabled_test_modules = os.environ['PYWIKIBOT_TEST_MODULES'].split(',')
+    disabled_test_modules = set(test_modules) - set(_enabled_test_modules)
+
 
 def collector(loader=unittest.loader.defaultTestLoader):
     """Load the default modules.
@@ -152,9 +184,7 @@ def collector(loader=unittest.loader.defaultTestLoader):
               % disabled_tests)
 
     modules = [module
-               for module in (library_test_modules +
-                              extra_test_modules +
-                              script_test_modules)
+               for module in test_modules
                if module not in disabled_test_modules]
 
     test_list = []

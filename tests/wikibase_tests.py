@@ -5,7 +5,7 @@
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 #
@@ -184,8 +184,6 @@ class TestWikibaseTypes(WikidataTestCase):
         # test WbQuantity error handling
         self.assertRaises(ValueError, pywikibot.WbQuantity, amount=None,
                           error=1)
-        self.assertRaises(NotImplementedError, pywikibot.WbQuantity, amount=789,
-                          unit='invalid_unit')
 
 
 class TestItemPageExtensibility(TestCase):
@@ -321,26 +319,28 @@ class TestItemLoad(WikidataTestCase):
 
     def test_item_missing(self):
         wikidata = self.get_repo()
-        # this item is deleted
-        item = pywikibot.ItemPage(wikidata, 'Q404')
-        self.assertEqual(item._link._title, 'Q404')
-        self.assertEqual(item.title(), 'Q404')
+        # this item has never existed
+        item = pywikibot.ItemPage(wikidata, 'Q7')
+        self.assertEqual(item._link._title, 'Q7')
+        self.assertEqual(item.title(), 'Q7')
         self.assertFalse(hasattr(item, '_content'))
-        self.assertEqual(item.id, 'Q404')
-        self.assertEqual(item.getID(), 'Q404')
-        self.assertEqual(item.getID(numeric=True), 404)
+        self.assertEqual(item.id, 'Q7')
+        self.assertEqual(item.getID(), 'Q7')
+        numeric_id = item.getID(numeric=True)
+        self.assertIsInstance(numeric_id, int)
+        self.assertEqual(numeric_id, 7)
         self.assertFalse(hasattr(item, '_content'))
         self.assertRaises(pywikibot.NoPage, item.get)
         self.assertTrue(hasattr(item, '_content'))
-        self.assertEqual(item.id, 'Q404')
-        self.assertEqual(item.getID(), 'Q404')
-        self.assertEqual(item._link._title, 'Q404')
-        self.assertEqual(item.title(), 'Q404')
+        self.assertEqual(item.id, 'Q7')
+        self.assertEqual(item.getID(), 'Q7')
+        self.assertEqual(item._link._title, 'Q7')
+        self.assertEqual(item.title(), 'Q7')
         self.assertRaises(pywikibot.NoPage, item.get)
         self.assertTrue(hasattr(item, '_content'))
-        self.assertEqual(item._link._title, 'Q404')
-        self.assertEqual(item.getID(), 'Q404')
-        self.assertEqual(item.title(), 'Q404')
+        self.assertEqual(item._link._title, 'Q7')
+        self.assertEqual(item.getID(), 'Q7')
+        self.assertEqual(item.title(), 'Q7')
 
     def test_item_never_existed(self):
         wikidata = self.get_repo()
@@ -520,10 +520,12 @@ class TestRedirects(WikidataTestCase):
     def test_redirect_item(self):
         wikidata = self.get_repo()
         item = pywikibot.ItemPage(wikidata, 'Q10008448')
+        item.get(get_redirect=True)
         target = pywikibot.ItemPage(wikidata, 'Q8422626')
         self.assertTrue(item.isRedirectPage())
         self.assertEqual(item.getRedirectTarget(), target)
         self.assertIsInstance(item.getRedirectTarget(), pywikibot.ItemPage)
+        self.assertRaises(pywikibot.IsRedirectPage, item.get)
 
 
 class TestPropertyPage(WikidataTestCase):
@@ -1000,6 +1002,65 @@ class TestJSON(WikidataTestCase):
         }
         diff = self.wdp.toJSON(diffto=self.wdp._content)
         self.assertEqual(diff, expected)
+
+
+class TestDeprecatedDataSiteMethods(WikidataTestCase, DeprecationTestCase):
+
+    """Test deprecated DataSite get_* methods."""
+
+    cached = True
+    # These methods are implemented using __getattr__,
+    # so the filename will be detected as site.py,
+    # requiring _do_test_warning_filename = False
+
+    def test_get_info(self):
+        """Test get_info."""
+        self._do_test_warning_filename = False
+        data = self.repo.get_info(60)
+        self.assertDeprecation()
+        self.assertIsInstance(data, dict)
+        self.assertIn('title', data)
+        self.assertEqual(data['title'], 'Q60')
+
+    def test_get_labels(self):
+        """Test get_labels."""
+        self._do_test_warning_filename = False
+        data = self.repo.get_labels(60)
+        self.assertDeprecation()
+        self.assertIsInstance(data, dict)
+        self.assertIn('en', data)
+
+    def test_get_aliases(self):
+        """Test get_aliases."""
+        self._do_test_warning_filename = False
+        data = self.repo.get_aliases(60)
+        self.assertDeprecation()
+        self.assertIsInstance(data, dict)
+        self.assertIn('en', data)
+
+    def test_get_descriptions(self):
+        """Test get_descriptions."""
+        self._do_test_warning_filename = False
+        data = self.repo.get_descriptions(60)
+        self.assertDeprecation()
+        self.assertIsInstance(data, dict)
+        self.assertIn('en', data)
+
+    def test_get_sitelinks(self):
+        """Test get_sitelinks."""
+        self._do_test_warning_filename = False
+        data = self.repo.get_sitelinks(60)
+        self.assertDeprecation()
+        self.assertIsInstance(data, dict)
+        self.assertIn('enwiki', data)
+
+    def test_get_urls(self):
+        """Test get_urls."""
+        self._do_test_warning_filename = False
+        data = self.repo.get_urls(60)
+        self.assertDeprecation()
+        self.assertIsInstance(data, dict)
+        self.assertIn('enwiki', data)
 
 
 if __name__ == '__main__':

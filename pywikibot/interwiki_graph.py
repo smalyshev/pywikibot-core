@@ -1,10 +1,11 @@
+# -*- coding: utf-8  -*-
 """Module with the Graphviz drawing calls."""
 #
 # (C) Pywikibot team, 2006-2015
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 #
@@ -128,7 +129,7 @@ class Subject(object):
         self.found_in = value
 
 
-class GraphDrawer:
+class GraphDrawer(object):
 
     """Graphviz (dot) code creator."""
 

@@ -92,7 +92,7 @@ Options (may be omitted):
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 #
@@ -331,7 +331,7 @@ class DiscussionPage(pywikibot.Page):
         self.archiver = archiver
         # for testing purposes we allow archiver to be None and we are able
         # to create the a DiscussionPage in this way:
-        # >>> import pwb, pywikibot as py
+        # >>> import pywikibot as py
         # >>> from scripts.archivebot import DiscussionPage
         # >>> d = DiscussionPage(py.Page(py.Site(), <talk page name>), None)
         if archiver is None:

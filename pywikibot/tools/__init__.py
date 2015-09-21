@@ -5,7 +5,7 @@
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import print_function, unicode_literals
+from __future__ import absolute_import, print_function, unicode_literals
 __version__ = '$Id$'
 
 import bz2
@@ -27,20 +27,18 @@ PY2 = (PYTHON_VERSION[0] == 2)
 
 if not PY2:
     import queue as Queue
-    basestring = (str,)
-    unicode = str
+
+    StringTypes = basestring = (str,)
+    UnicodeType = unicode = str
 else:
     import Queue
 
+    StringTypes = types.StringTypes
+    UnicodeType = types.UnicodeType
 
-def print_debug(msg, *args, **kwargs):
-    """Simple debug routine."""
-    print(msg)
+from pywikibot.logging import debug
 
-
-# This variable uses the builtin print function.
-# pywikibot updates it to use logging in bot.init_handlers()
-debug = print_debug
+_logger = 'tools'
 
 
 class _NotImplementedWarning(RuntimeWarning):
@@ -86,6 +84,7 @@ Please upgrade to Python 2.7+ or Python 3.3+, or run:
                 """Counter not found."""
 
                 pass
+        count = None
     else:
         Counter = future.backports.misc.Counter
         OrderedDict = future.backports.misc.OrderedDict
@@ -95,14 +94,16 @@ Please upgrade to Python 2.7+ or Python 3.3+, or run:
         except AttributeError:
             warn('Please update the "future" package to at least version '
                  '0.15.0 to use its count.', RuntimeWarning, 2)
-
-            def count(start=0, step=1):
-                """Backported C{count} to support keyword arguments and step."""
-                while True:
-                    yield start
-                    start += step
-
+            count = None
         del future
+
+    if count is None:
+        def count(start=0, step=1):
+            """Backported C{count} to support keyword arguments and step."""
+            while True:
+                yield start
+                start += step
+
 
 else:
     from collections import Counter  # noqa ; unused
@@ -137,27 +138,27 @@ class ComparableMixin(object):
     """Mixin class to allow comparing to other objects which are comparable."""
 
     def __lt__(self, other):
-        """Compare if other is less than self."""
-        return other >= self._cmpkey()
-
-    def __le__(self, other):
-        """Compare if other is less equals self."""
+        """Compare if self is less than other."""
         return other > self._cmpkey()
 
+    def __le__(self, other):
+        """Compare if self is less equals other."""
+        return other >= self._cmpkey()
+
     def __eq__(self, other):
-        """Compare if other is equal to self."""
+        """Compare if self is equal to other."""
         return other == self._cmpkey()
 
     def __ge__(self, other):
-        """Compare if other is greater equals self."""
-        return other < self._cmpkey()
-
-    def __gt__(self, other):
-        """Compare if other is greater than self."""
+        """Compare if self is greater equals other."""
         return other <= self._cmpkey()
 
+    def __gt__(self, other):
+        """Compare if self is greater than other."""
+        return other < self._cmpkey()
+
     def __ne__(self, other):
-        """Compare if other is not equal to self."""
+        """Compare if self is not equal to other."""
         return other != self._cmpkey()
 
 
@@ -381,13 +382,23 @@ class MediaWikiVersion(Version):
     Two versions are equal if their normal version and dev version are equal. A
     version is greater if the normal version or dev version is greater. For
     example:
+
         1.24 < 1.24.1 < 1.25wmf1 < 1.25alpha < 1.25beta1 < 1.25beta2
         < 1.25-rc-1 < 1.25-rc.2 < 1.25
 
     Any other suffixes are considered invalid.
     """
 
-    MEDIAWIKI_VERSION = re.compile(r'^(\d+(?:\.\d+)+)(wmf(\d+)|alpha|beta(\d+)|-?rc\.?(\d+))?$')
+    MEDIAWIKI_VERSION = re.compile(
+        r'^(\d+(?:\.\d+)+)(wmf(\d+)|alpha|beta(\d+)|-?rc\.?(\d+)|.*)?$')
+
+    @classmethod
+    def from_generator(cls, generator):
+        """Create instance using the generator string."""
+        if not generator.startswith('MediaWiki '):
+            raise ValueError('Generator string ({0!r}) must start with '
+                             '"MediaWiki "'.format(generator))
+        return cls(generator[len('MediaWiki '):])
 
     def parse(self, vstring):
         """Parse version string."""
@@ -407,6 +418,14 @@ class MediaWikiVersion(Version):
         elif version_match.group(2) == 'alpha':
             self._dev_version = (1, )
         else:
+            assert 'wmf' not in version_match.group(2)
+            assert 'alpha' not in version_match.group(2)
+            assert 'beta' not in version_match.group(2)
+            assert 'rc' not in version_match.group(2)
+            if version_match.group(2):
+                debug('Additional unused version part '
+                      '"{0}"'.format(version_match.group(2)),
+                      _logger)
             self._dev_version = (4, )
         self.suffix = version_match.group(2) or ''
         self.version = tuple(components)
@@ -832,9 +851,12 @@ class ContextManagerWrapper(object):
     used as a context manager in with-statements. In such statements the value
     set via 'as' is directly the wrapped object. For example:
 
-     wrapped = ContextManagerWrapper(an_object)
-     with wrapped as another_object:
-         assert(another_object is an_object)
+    >>> class Wrapper(object):
+    ...     def close(self): pass
+    >>> an_object = Wrapper()
+    >>> wrapped = ContextManagerWrapper(an_object)
+    >>> with wrapped as another_object:
+    ...      assert another_object is an_object
 
     It does not subclass the object though, so isinstance checks will fail
     outside a with-statement.
@@ -862,23 +884,32 @@ class ContextManagerWrapper(object):
         setattr(self._wrapped, name, value)
 
 
-def open_compressed(filename, use_extension=False):
+def open_archive(filename, mode='rb', use_extension=True):
     """
     Open a file and uncompress it if needed.
 
     This function supports bzip2, gzip and 7zip as compression containers. It
     uses the packages available in the standard library for bzip2 and gzip so
     they are always available. 7zip is only available when a 7za program is
-    available.
+    available and only supports reading from it.
 
     The compression is either selected via the magic number or file ending.
 
     @param filename: The filename.
     @type filename: str
     @param use_extension: Use the file extension instead of the magic number
-        to determine the type of compression (default False).
+        to determine the type of compression (default True). Must be True when
+        writing or appending.
     @type use_extension: bool
-    @raises ValueError: When 7za is not available.
+    @param mode: The mode in which the file should be opened. It may either be
+        'r', 'rb', 'a', 'ab', 'w' or 'wb'. All modes open the file in binary
+        mode. It defaults to 'rb'.
+    @type mode: string
+    @raises ValueError: When 7za is not available or the opening mode is unknown
+        or it tries to write a 7z archive.
+    @raises FileNotFoundError: When the filename doesn't exist and it tries
+        to read from it or it tries to determine the compression algorithm (or
+        IOError on Python 2).
     @raises OSError: When it's not a 7z archive but the file extension is 7z.
         It is also raised by bz2 when its content is invalid. gzip does not
         immediately raise that error but only on reading it.
@@ -894,11 +925,18 @@ def open_compressed(filename, use_extension=False):
         else:
             return wrapped
 
+    if mode in ('r', 'a', 'w'):
+        mode += 'b'
+    elif mode not in ('rb', 'ab', 'wb'):
+        raise ValueError('Invalid mode: "{0}"'.format(mode))
+
     if use_extension:
         # if '.' not in filename, it'll be 1 character long but otherwise
         # contain the period
         extension = filename[filename.rfind('.'):][1:]
     else:
+        if mode != 'rb':
+            raise ValueError('Magic number detection only when reading')
         with open(filename, 'rb') as f:
             magic_number = f.read(8)
         if magic_number.startswith(b'BZh'):
@@ -911,10 +949,13 @@ def open_compressed(filename, use_extension=False):
             extension = ''
 
     if extension == 'bz2':
-        return wrap(bz2.BZ2File(filename), 1)
+        return wrap(bz2.BZ2File(filename, mode), 1)
     elif extension == 'gz':
-        return wrap(gzip.open(filename), 0)
+        return wrap(gzip.open(filename, mode), 0)
     elif extension == '7z':
+        if mode != 'rb':
+            raise NotImplementedError('It is not possible to write a 7z file.')
+
         try:
             process = subprocess.Popen(['7za', 'e', '-bd', '-so', filename],
                                        stdout=subprocess.PIPE,
@@ -933,7 +974,7 @@ def open_compressed(filename, use_extension=False):
             else:
                 return process.stdout
     else:
-        # assume it's an uncompressed XML file
+        # assume it's an uncompressed file
         return open(filename, 'rb')
 
 
@@ -1282,7 +1323,7 @@ def remove_last_args(arg_names):
     original function requests one and arg_names contain one name will result
     in an error, because the function got called with 2 parameters.
 
-    The decorated function may not use *args or **kwargs.
+    The decorated function may not use C{*args} or C{**kwargs}.
 
     @param arg_names: The names of all arguments.
     @type arg_names: iterable; for the most explanatory message it should
@@ -1310,7 +1351,7 @@ def remove_last_args(arg_names):
             depth = get_wrapper_depth(wrapper) + 1
             args, varargs, kwargs, _ = inspect.getargspec(wrapper.__wrapped__)
             if varargs is not None and kwargs is not None:
-                raise ValueError(u'{1} may not have * or ** args.'.format(
+                raise ValueError('{0} may not have * or ** args.'.format(
                     name))
             deprecated = set(__kw) & set(arg_names)
             if len(__args) > len(args):
@@ -1407,7 +1448,7 @@ class ModuleDeprecationWrapper(types.ModuleType):
             module = sys.modules[module]
         super(ModuleDeprecationWrapper, self).__setattr__('_deprecated', {})
         super(ModuleDeprecationWrapper, self).__setattr__('_module', module)
-        super(ModuleDeprecationWrapper, self).__setattr__('__doc__', module.__doc__)
+        self.__dict__.update(module.__dict__)
 
         if __debug__:
             sys.modules[module.__name__] = self
@@ -1462,6 +1503,7 @@ class ModuleDeprecationWrapper(types.ModuleType):
 
     def __setattr__(self, attr, value):
         """Set the value of the wrapped module."""
+        self.__dict__[attr] = value
         setattr(self._module, attr, value)
 
     def __getattr__(self, attr):
@@ -1474,3 +1516,9 @@ class ModuleDeprecationWrapper(types.ModuleType):
             if self._deprecated[attr][1]:
                 return self._deprecated[attr][1]
         return getattr(self._module, attr)
+
+
+@deprecated('open_archive()')
+def open_compressed(filename, use_extension=False):
+    """DEPRECATED: Open a file and uncompress it if needed."""
+    return open_archive(filename, use_extension=use_extension)

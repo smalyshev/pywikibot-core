@@ -1,24 +1,27 @@
 # -*- coding: utf-8  -*-
 """Tests for the family module."""
 #
-# (C) Pywikibot team, 2014
+# (C) Pywikibot team, 2014-2015
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 
-from pywikibot.family import Family
-from pywikibot.exceptions import UnknownFamily
-
 import pywikibot.site
+
+from pywikibot.exceptions import UnknownFamily
+from pywikibot.family import Family, SingleSiteFamily
+from pywikibot.tools import StringTypes as basestring
 
 from tests.aspects import (
     unittest,
     TestCase,
     DeprecationTestCase,
+    PatchingTestCase,
 )
+from tests.utils import DrySite
 
 
 class TestFamily(TestCase):
@@ -32,11 +35,26 @@ class TestFamily(TestCase):
         for name in pywikibot.config.family_files:
             f = Family.load(name)
             self.assertIsInstance(f.langs, dict)
-            self.assertNotEqual(f.langs, {})
-            # There is one inconsistency
-            if f.name == 'wikimediachapter' and name == 'wikimedia':
-                continue
+            self.assertTrue(f.langs)
+            self.assertTrue(f.codes)
+            self.assertTrue(iter(f.codes))
+            self.assertIsInstance(next(iter(f.codes)), basestring)
+            self.assertTrue(f.domains)
+            self.assertTrue(iter(f.domains))
+            for domain in f.domains:
+                self.assertIsInstance(domain, basestring)
+                if domain != 'localhost':
+                    self.assertIn('.', domain)
             self.assertEqual(f.name, name)
+            self.assertIsInstance(f.languages_by_size, list)
+            self.assertGreaterEqual(set(f.langs), set(f.languages_by_size))
+            if len(f.langs) > 6 and f.name != 'wikimediachapter':
+                self.assertNotEqual(f.languages_by_size, [])
+            if isinstance(f, SingleSiteFamily):
+                self.assertIsNotNone(f.code)
+                self.assertIsNotNone(f.domain)
+                self.assertEqual(set(f.langs), set([f.code]))
+                self.assertEqual(set(f.codes), set([f.code]))
 
     def test_family_load_invalid(self):
         """Test that an invalid family raised UnknownFamily exception."""
@@ -124,23 +142,34 @@ class TestFamily(TestCase):
                           {'a': 'b', 'c': None})
 
 
-class TestFamilyUrlRegex(TestCase):
+class TestFamilyUrlRegex(PatchingTestCase):
 
     """Test family URL regex."""
 
     net = False
 
-    def test_get_regex_wikipedia_precise(self):
-        """Test the family regex is optimal."""
-        f = Family.load('wikipedia')
-        regex = f._get_regex_all()
+    @PatchingTestCase.patched(pywikibot, 'Site')
+    def Site(self, code, fam, *args, **kwargs):
+        """Own DrySite creator."""
+        self.assertEqual(args, tuple())
+        self.assertEqual(kwargs, {})
+        self.assertEqual(code, self.current_code)
+        self.assertEqual(fam, self.current_family)
+        site = DrySite(code, fam, None, None)
+        site._siteinfo._cache['general'] = ({'articlepath': self.article_path},
+                                            True)
+        return site
 
-        self.assertTrue(regex.startswith('(?:\/\/|https\:\/\/)('))
-        self.assertIn('vo\.wikipedia\.org', regex)
-        self.assertTrue(regex.endswith(')(?:\/w\/index\.php\/?|\/wiki\/)'))
+    def setUp(self):
+        """Setup default article path."""
+        super(TestFamilyUrlRegex, self).setUp()
+        self.article_path = '/wiki/$1'
 
     def test_from_url_wikipedia_extra(self):
         """Test various URLs against wikipedia regex."""
+        self.current_code = 'vo'
+        self.current_family = 'wikipedia'
+
         f = Family.load('wikipedia')
 
         prefix = 'https://vo.wikipedia.org'
@@ -152,13 +181,18 @@ class TestFamilyUrlRegex(TestCase):
 
         self.assertEqual(f.from_url(prefix + '/wiki/$1'), 'vo')
         self.assertEqual(f.from_url('//vo.wikipedia.org/wiki/$1'), 'vo')
-        self.assertEqual(f.from_url('//vo.wikipedia.org/wiki/$1/foo'), 'vo')
         self.assertEqual(f.from_url(prefix + '/w/index.php/$1'), 'vo')
         self.assertEqual(f.from_url('//vo.wikipedia.org/wiki/$1'), 'vo')
-        self.assertEqual(f.from_url('//vo.wikipedia.org/wiki/$1/foo'), 'vo')
+
+        # Text after $1 is not allowed
+        self.assertRaises(ValueError, f.from_url,
+                          '//vo.wikipedia.org/wiki/$1/foo')
+
+        # the IWM may contain the wrong protocol, but it's only used to
+        # determine a site so using HTTP or HTTPS is not an issue
+        self.assertEqual(f.from_url('http://vo.wikipedia.org/wiki/$1'), 'vo')
 
         # wrong protocol
-        self.assertIsNone(f.from_url('http://vo.wikipedia.org/wiki/$1'))
         self.assertIsNone(f.from_url('ftp://vo.wikipedia.org/wiki/$1'))
         # wrong code
         self.assertIsNone(f.from_url('https://foobar.wikipedia.org/wiki/$1'))
@@ -172,16 +206,19 @@ class TestFamilyUrlRegex(TestCase):
     def test_each_family(self):
         """Test each family builds a working regex."""
         for family in pywikibot.config.family_files:
+            self.current_family = family
             family = Family.load(family)
-            # Test family does not respond to from_url due to overlap
-            # with Wikipedia family.
-            if family.name == 'test':
-                continue
-            for code in family.langs:
-                url = ('%s://%s%s$1' % (family.protocol(code),
-                                        family.hostname(code),
-                                        family.path(code)))
-                self.assertEqual(family.from_url(url), code)
+            for code in family.codes:
+                self.current_code = code
+                url = ('%s://%s%s/$1' % (family.protocol(code),
+                                         family.hostname(code),
+                                         family.path(code)))
+                # Families can switch off if they want to be detected using URL
+                # this applies for test:test (there is test:wikipedia)
+                if family._ignore_from_url or code in family._ignore_from_url:
+                    self.assertIsNone(family.from_url(url))
+                else:
+                    self.assertEqual(family.from_url(url), code)
 
 
 class TestOldFamilyMethod(DeprecationTestCase):

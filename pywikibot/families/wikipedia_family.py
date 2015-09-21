@@ -1,6 +1,6 @@
 # -*- coding: utf-8  -*-
 """Family module for Wikipedia."""
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 from pywikibot import family
 
@@ -8,9 +8,11 @@ __version__ = '$Id$'
 
 
 # The Wikimedia family that is known as Wikipedia, the Free Encyclopedia
-class Family(family.WikimediaFamily):
+class Family(family.SubdomainFamily, family.WikimediaFamily):
 
     """Family module for Wikipedia."""
+
+    name = 'wikipedia'
 
     closed_wikis = [
         # https://meta.wikimedia.org/wiki/Proposals_for_closing_projects/Closure_of_Afar_Wikipedia
@@ -48,9 +50,6 @@ class Family(family.WikimediaFamily):
 
     def __init__(self):
         """Constructor."""
-        super(Family, self).__init__()
-        self.name = 'wikipedia'
-
         self.languages_by_size = [
             'en', 'sv', 'nl', 'de', 'fr', 'war', 'ru', 'ceb', 'it', 'es', 'vi',
             'pl', 'ja', 'pt', 'zh', 'uk', 'ca', 'fa', 'no', 'sh', 'fi', 'ar',
@@ -58,7 +57,7 @@ class Family(family.WikimediaFamily):
             'eu', 'sk', 'da', 'bg', 'he', 'lt', 'hy', 'hr', 'sl', 'et', 'uz',
             'gl', 'nn', 'vo', 'la', 'simple', 'el', 'hi', 'az', 'th', 'ka',
             'ce', 'oc', 'be', 'mk', 'mg', 'new', 'ur', 'tt', 'ta', 'pms', 'cy',
-            'tl', 'lv', 'bs', 'te', 'be-x-old', 'br', 'ht', 'sq', 'jv', 'lb',
+            'tl', 'lv', 'bs', 'te', 'be-tarask', 'br', 'ht', 'sq', 'jv', 'lb',
             'mr', 'is', 'ml', 'zh-yue', 'bn', 'af', 'ba', 'ga', 'pnb', 'cv',
             'fy', 'lmo', 'tg', 'sco', 'my', 'yo', 'an', 'ky', 'sw', 'io', 'ne',
             'gu', 'scn', 'bpy', 'nds', 'ku', 'ast', 'qu', 'als', 'su', 'pa',
@@ -86,8 +85,7 @@ class Family(family.WikimediaFamily):
         # Sites we want to edit but not count as real languages
         self.test_codes = ['test', 'test2']
 
-        self.langs = dict((lang, '%s.wikipedia.org' % lang) for lang in
-                          self.languages_by_size + self.test_codes)
+        super(Family, self).__init__()
 
         self.category_redirect_templates = {
             '_default': (),
@@ -101,8 +99,7 @@ class Family(family.WikimediaFamily):
             'es': (u'Categoría redirigida',),
             'eu': (u'Kategoria redirect',),
             'fa': (u'رده بهتر',
-                   u'انتقال رده',
-                   u'فیلم‌های امریکایی',),
+                   u'انتقال رده',),
             'fr': (u'Redirection de catégorie',),
             'gv': (u'Aastiurey ronney',),
             'hi': (u'श्रेणीअनुप्रेषित',
@@ -134,6 +131,7 @@ class Family(family.WikimediaFamily):
                    u'CategoryRedirect',
                    u'Category redirect',
                    u'Catredirect',),
+            'sco': ('Category redirect',),
             'simple': (u'Category redirect',
                        u'Categoryredirect',
                        u'Catredirect',),
@@ -176,7 +174,7 @@ class Family(family.WikimediaFamily):
             'ast': u'Dixebra',
             'ar':  u'صفحات توضيح',
             'be':  u'Disambig',
-            'be-x-old':  u'Вікіпэдыя:Неадназначнасьці',
+            'be-tarask':  u'Вікіпэдыя:Неадназначнасьці',
             'bg':  u'Пояснителни страници',
             'ca':  u'Pàgines de desambiguació',
             'cbk-zam': u'Desambiguo',
@@ -262,7 +260,7 @@ class Family(family.WikimediaFamily):
         self.cross_allowed = [
             'ab', 'ace', 'af', 'ak', 'als', 'am', 'an', 'ang', 'ar', 'arc',
             'arz', 'as', 'ast', 'av', 'ay', 'az', 'ba', 'bar', 'bat-smg', 'bcl',
-            'be', 'be-x-old', 'bg', 'bh', 'bi', 'bjn', 'bm', 'bo', 'bpy', 'bug',
+            'be', 'be-tarask', 'bg', 'bh', 'bi', 'bjn', 'bm', 'bo', 'bpy', 'bug',
             'bxr', 'ca', 'cbk-zam', 'cdo', 'ce', 'ceb', 'ch', 'chr', 'chy',
             'ckb', 'co', 'cr', 'crh', 'csb', 'cu', 'cv', 'cy', 'da', 'diq',
             'dsb', 'dz', 'ee', 'el', 'eml', 'en', 'eo', 'et', 'eu', 'ext', 'fa',
@@ -302,7 +300,7 @@ class Family(family.WikimediaFamily):
             'ace', 'kbd', 'af', 'ak', 'als', 'am', 'ang', 'ab', 'ar', 'an',
             'arc', 'roa-rup', 'frp', 'arz', 'as', 'ast', 'gn', 'av', 'ay', 'az',
             'bjn', 'id', 'ms', 'bg', 'bm', 'zh-min-nan', 'nan', 'map-bms', 'jv',
-            'su', 'ba', 'be', 'be-x-old', 'bh', 'bcl', 'bi', 'bn', 'bo', 'bar',
+            'su', 'ba', 'be', 'be-tarask', 'bh', 'bcl', 'bi', 'bn', 'bo', 'bar',
             'bs', 'bpy', 'br', 'bug', 'bxr', 'ca', 'ceb', 'ch', 'cbk-zam', 'sn',
             'tum', 'ny', 'cho', 'chr', 'co', 'cy', 'cv', 'cs', 'da', 'dk',
             'pdc', 'de', 'nv', 'dsb', 'na', 'dv', 'dz', 'mh', 'et', 'el', 'eml',
@@ -331,7 +329,7 @@ class Family(family.WikimediaFamily):
         ]
 
         self.interwiki_putfirst = {
-            'be-x-old': self.alphabetic,
+            'be-tarask': self.alphabetic,
             'en': self.alphabetic,
             'et': self.alphabetic_revised,
             'fi': self.alphabetic_revised,
@@ -393,7 +391,7 @@ class Family(family.WikimediaFamily):
         # TODO: Remove comments for appropriate pages
         self.doc_subpages = {
             '_default': ((u'/doc', ),
-                         ['ar', 'bn', 'cs', 'da', 'en', 'es', 'fa',
+                         ['ar', 'bn', 'cs', 'da', 'en', 'es',
                           'hu', 'id', 'ilo', 'ja', 'ms',
                           'ms', 'pt', 'ro', 'ru', 'simple', 'vi', 'zh']
                          ),
@@ -401,6 +399,7 @@ class Family(family.WikimediaFamily):
             'de': (u'Doku', u'/Meta'),
             'dsb': (u'/Dokumentacija', ),
             'eu': (u'txantiloi dokumentazioa', u'/dok'),
+            'fa': (u'/doc', u'/توضیحات'),
             # fi: no idea how to handle this type of subpage at :Metasivu:
             'fi': ((), ),
             'fr': (u'/documentation', ),

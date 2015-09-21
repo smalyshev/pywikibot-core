@@ -5,18 +5,20 @@
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 
 from collections import Iterable
-from pywikibot.site import Namespace
-from tests.aspects import unittest, TestCase, AutoDeprecationTestCase
 
-import sys
-if sys.version_info[0] > 2:
-    basestring = (str, )
-    unicode = str
+from pywikibot.site import Namespace, NamespacesDict
+from pywikibot.tools import (
+    PY2,
+    StringTypes as basestring,
+    UnicodeType as unicode,
+)
+
+from tests.aspects import unittest, TestCase, AutoDeprecationTestCase
 
 # Default namespaces which should work in any MW wiki
 _base_builtin_ns = {
@@ -44,6 +46,11 @@ file_builtin_ns = dict(_base_builtin_ns)
 file_builtin_ns['File'] = 6
 file_builtin_ns['File talk'] = 7
 builtin_ns = dict(list(image_builtin_ns.items()) + list(file_builtin_ns.items()))
+
+
+def builtin_NamespacesDict():
+    """Return a NamespacesDict of the builtin namespaces."""
+    return NamespacesDict(Namespace.builtin_namespaces())
 
 
 class TestNamespaceObject(TestCase):
@@ -121,7 +128,7 @@ class TestNamespaceObject(TestCase):
                       aliases=[u'Image', u'Immagine'], **kwargs)
 
         self.assertEqual(str(y), ':File:')
-        if sys.version_info[0] <= 2:
+        if PY2:
             self.assertEqual(unicode(y), u':ملف:')
         self.assertEqual(y.canonical_prefix(), ':File:')
         self.assertEqual(y.custom_prefix(), u':ملف:')
@@ -132,13 +139,17 @@ class TestNamespaceObject(TestCase):
 
         self.assertEqual(a, 0)
         self.assertEqual(a, '')
+        self.assertFalse(a < 0)
+        self.assertFalse(a > 0)
         self.assertNotEqual(a, None)
+
+        self.assertGreater(a, -1)
 
         x = Namespace(id=6, custom_name=u'dummy', canonical_name=u'File',
                       aliases=[u'Image', u'Immagine'])
         y = Namespace(id=6, custom_name=u'ملف', canonical_name=u'File',
                       aliases=[u'Image', u'Immagine'])
-        z = Namespace(id=7, custom_name=u'dummy', canonical_name=u'File',
+        z = Namespace(id=7, custom_name=u'dummy 7', canonical_name=u'File',
                       aliases=[u'Image', u'Immagine'])
 
         self.assertEqual(x, x)
@@ -157,11 +168,19 @@ class TestNamespaceObject(TestCase):
         self.assertEqual(x, u'image')
         self.assertEqual(x, u'Image')
 
+        self.assertFalse(x < 6)
+        self.assertFalse(x > 6)
+
         self.assertEqual(y, u'ملف')
 
         self.assertLess(a, x)
+        self.assertLess(x, z)
+        self.assertLessEqual(a, x)
         self.assertGreater(x, a)
+        self.assertGreater(x, 0)
         self.assertGreater(z, x)
+        self.assertGreaterEqual(x, a)
+        self.assertGreaterEqual(y, x)
 
         self.assertIn(6, [x, y, z])
         self.assertNotIn(8, [x, y, z])
@@ -317,6 +336,91 @@ class TestNamespaceCollections(TestCase):
 
         self.assertEqual(len(namespaces),
                          len(positive_namespaces) + len(excluded_namespaces))
+
+
+class TestNamespacesDictLookupName(TestCase):
+
+    """Test NamespacesDict.lookup_name and lookup_normalized_name."""
+
+    net = False
+
+    def test_lookup_name(self):
+        """Test lookup_name."""
+        namespaces = builtin_NamespacesDict()
+        self.assertIs(namespaces.lookup_name('project'), namespaces[4])
+        self.assertIs(namespaces.lookup_name('PROJECT'), namespaces[4])
+        self.assertIs(namespaces.lookup_name('Project'), namespaces[4])
+        self.assertIs(namespaces.lookup_name('Project:'), namespaces[4])
+
+    def test_lookup_normalized_name(self):
+        """Test lookup_normalized_name."""
+        namespaces = builtin_NamespacesDict()
+        self.assertIs(namespaces.lookup_normalized_name('project'),
+                      namespaces[4])
+        self.assertIsNone(namespaces.lookup_normalized_name('PROJECT'))
+        self.assertIsNone(namespaces.lookup_normalized_name('Project'))
+        self.assertIsNone(namespaces.lookup_normalized_name('Project:'))
+
+
+class TestNamespacesDictGetItem(TestCase):
+
+    """Test NamespacesDict.__getitem__."""
+
+    net = False
+
+    def test_ids(self):
+        """Test lookup by canonical namespace id."""
+        namespaces = builtin_NamespacesDict()
+        for namespace in namespaces.values():
+            self.assertEqual(namespace, namespaces[namespace.id])
+
+    def test_namespace(self):
+        """Test lookup by Namespace object."""
+        namespaces = builtin_NamespacesDict()
+        for namespace in namespaces.values():
+            self.assertEqual(namespace, namespaces[namespace])
+
+    def test_invalid_id(self):
+        """Test lookup by invalid id."""
+        namespaces = builtin_NamespacesDict()
+        lower = min(namespaces.keys()) - 1
+        higher = max(namespaces.keys()) + 1
+        self.assertRaises(KeyError, namespaces.__getitem__, lower)
+        self.assertRaises(KeyError, namespaces.__getitem__, higher)
+
+    def test_canonical_name(self):
+        """Test lookup by canonical namespace name."""
+        namespaces = builtin_NamespacesDict()
+        for namespace in namespaces.values():
+            self.assertEqual(namespace, namespaces[namespace.canonical_name])
+            self.assertEqual(namespace,
+                             namespaces[namespace.canonical_name.upper()])
+
+    def test_canonical_attr(self):
+        """Test attribute lookup by canonical namespace name."""
+        namespaces = builtin_NamespacesDict()
+        self.assertEqual(namespaces[0], namespaces.MAIN)
+        self.assertEqual(namespaces[1], namespaces.TALK)
+
+        for namespace in namespaces.values():
+            if namespace.id == 0:
+                continue
+            attr = namespace.canonical_name.upper()
+            self.assertEqual(namespace, getattr(namespaces, attr))
+
+    def test_all(self):
+        """Test lookup by any namespace name."""
+        namespaces = builtin_NamespacesDict()
+        for namespace in namespaces.values():
+            for name in namespace:
+                self.assertEqual(namespace, namespaces[name.upper()])
+
+    def test_invalid_name(self):
+        """Test lookup by invalid name."""
+        namespaces = builtin_NamespacesDict()
+        self.assertRaises(KeyError, namespaces.__getitem__, 'FOO')
+        # '|' is not permitted in namespace names
+        self.assertRaises(KeyError, namespaces.__getitem__, '|')
 
 
 if __name__ == '__main__':

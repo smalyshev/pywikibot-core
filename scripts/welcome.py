@@ -173,12 +173,12 @@ badword at all but can be used for some bad-nickname.
 # (C) Filnik, 2007-2011
 # (C) Daniel Herding, 2007
 # (C) Alex Shih-Han Lin, 2009-2010
-# (C) xqt, 2009-2011
-# (C) Pywikibot team, 2008-2010
+# (C) xqt, 2009-2015
+# (C) Pywikibot team, 2008-2015
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 #
@@ -239,7 +239,6 @@ netext = {
         'ar': u'{{subst:ترحيب}} %s',
         'bn': u'{{subst:স্বাগতম/বট}} %s',
         'da': u'{{velkommen|%s}}',
-        'de': u'{{subst:Hallo}} %s',
         'en': u'{{subst:welcome}} %s',
         'fa': u'{{جا:خوشامد}} %s',
         'fr': u'{{subst:Discussion Projet:Aide/Bienvenue}} %s',
@@ -265,6 +264,7 @@ netext = {
         'zh-yue': u'{{歡迎}}--%s',
     },
     'wikinews': {
+        'ar': '{{subst:ترحيب}} %s',
         'fa': u'{{خوشامد۲|%s}}',
         'it': u'{{subst:benvenuto}}',
         'zh': u'{{subst:welcome}} %s',
@@ -294,7 +294,6 @@ report_page = {
         'am': u'User:Beria/Report',
         'ar': 'Project:إخطار الإداريين/أسماء مستخدمين للفحص',
         'da': u'Bruger:Broadbot/Report',
-        'de': u'Benutzer:Filnik/Report',
         'en': u'Project:Administrator intervention against vandalism',
         'fa': u'Project:تابلوی اعلانات مدیران/گزارش ربات',
         'ga': u'Project:Log fáilte/Drochainmneacha',

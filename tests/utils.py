@@ -5,7 +5,7 @@
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import print_function, unicode_literals
+from __future__ import absolute_import, print_function, unicode_literals
 __version__ = '$Id$'
 #
 import inspect
@@ -19,12 +19,13 @@ import traceback
 import warnings
 
 from collections import Mapping
+from types import ModuleType
 from warnings import warn
 
-if sys.version_info[0] > 2:
-    import six
+from pywikibot.tools import PY2
 
-    unicode = str
+if not PY2:
+    import six
 
 import pywikibot
 
@@ -33,10 +34,15 @@ from pywikibot.comms import threadedhttp
 from pywikibot.site import Namespace
 from pywikibot.data.api import CachedRequest
 from pywikibot.data.api import Request as _original_Request
-from pywikibot.tools import PYTHON_VERSION
+from pywikibot.tools import (
+    PYTHON_VERSION,
+    UnicodeType as unicode,
+)
 
 from tests import _pwb_py
 from tests import unittest  # noqa
+
+OSWIN32 = (sys.platform == 'win32')
 
 
 class DrySiteNote(RuntimeWarning):
@@ -103,7 +109,7 @@ def allowed_failure_if(expect):
 
 def add_metaclass(cls):
     """Call six's add_metaclass with the site's __metaclass__ in Python 3."""
-    if sys.version_info[0] > 2:
+    if not PY2:
         return six.add_metaclass(cls.__metaclass__)(cls)
     else:
         assert cls.__metaclass__
@@ -124,6 +130,23 @@ def entered_loop(iterable):
     for iterable_item in iterable:
         return True
     return False
+
+
+class FakeModule(ModuleType):
+
+    """An empty fake module."""
+
+    @classmethod
+    def create_dotted(cls, name):
+        """Create a chain of modules based on the name separated by periods."""
+        modules = name.split('.')
+        mod = None
+        for mod_name in modules[::-1]:
+            module = cls(str(mod_name))
+            if mod:
+                setattr(module, mod.__name__, mod)
+            mod = module
+        return mod
 
 
 class WarningSourceSkipContextManager(warnings.catch_warnings):
@@ -234,7 +257,7 @@ class DryParamInfo(dict):
         return self[module][param_name]
 
 
-class DummySiteinfo():
+class DummySiteinfo(object):
 
     """Dummy class to use instead of L{pywikibot.site.Siteinfo}."""
 
@@ -325,10 +348,12 @@ class DrySite(pywikibot.site.APISite):
         self._siteinfo._cache['case'] = (
             'case-sensitive' if self.family.name == 'wiktionary' else
             'first-letter', True)
+        self._siteinfo._cache['mainpage'] = 'Main Page'
         extensions = []
         if self.family.name == 'wikisource':
             extensions.append({'name': 'ProofreadPage'})
         self._siteinfo._cache['extensions'] = (extensions, True)
+        self._msgcache = {'*': 'dummy entry', 'hello': 'world'}
 
     def _build_namespaces(self):
         return Namespace.builtin_namespaces(case=self.siteinfo['case'])
@@ -544,7 +569,7 @@ def execute(command, data_in=None, timeout=0, error=None):
 
     # sys.path may have been modified by the test runner to load dependencies.
     pythonpath = os.pathsep.join(sys.path)
-    if sys.platform == 'win32' and sys.version_info[0] < 3:
+    if OSWIN32 and PY2:
         pythonpath = str(pythonpath)
     env[str('PYTHONPATH')] = pythonpath
     env[str('PYTHONIOENCODING')] = str(config.console_encoding)
@@ -554,7 +579,7 @@ def execute(command, data_in=None, timeout=0, error=None):
         env[str('LC_ALL')] = str(pywikibot.config.userinterface_lang)
 
     # Set EDITOR to an executable that ignores all arguments and does nothing.
-    env[str('EDITOR')] = str('call' if sys.platform == 'win32' else 'true')
+    env[str('EDITOR')] = str('call' if OSWIN32 else 'true')
 
     options = {
         'stdout': subprocess.PIPE,
@@ -567,7 +592,7 @@ def execute(command, data_in=None, timeout=0, error=None):
         p = subprocess.Popen(command, env=env, **options)
     except TypeError as e:
         # Generate a more informative error
-        if sys.platform == 'win32' and sys.version_info[0] < 3:
+        if OSWIN32 and PY2:
             unicode_env = [(k, v) for k, v in os.environ.items()
                            if not isinstance(k, str) or
                            not isinstance(v, str)]

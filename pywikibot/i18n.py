@@ -21,7 +21,7 @@ messages.  See L{twntranslate} for more information on the messages.
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 #
@@ -35,12 +35,12 @@ import pkgutil
 
 from collections import defaultdict
 
-from pywikibot import Error
-from .plural import plural_rules
-
 import pywikibot
 
-from . import config2 as config
+from pywikibot import __url__
+from pywikibot import Error
+from pywikibot import config
+from pywikibot.plural import plural_rules
 
 if sys.version_info[0] > 2:
     basestring = (str, )
@@ -81,8 +81,12 @@ def messages_available():
     if _messages_available is not None:
         return _messages_available
     try:
-        __import__(_messages_package_name)
+        mod = __import__(_messages_package_name, fromlist=[str('__path__')])
     except ImportError:
+        _messages_available = False
+        return False
+
+    if not os.listdir(next(iter(mod.__path__))):
         _messages_available = False
         return False
 
@@ -232,8 +236,8 @@ def _altlang(code):
         return ['kbd', 'ady', 'ru']
     if code == 'tt':
         return ['tt-cyrl', 'ru']
-    if code in ['be', 'be-x-old', 'be-tarask']:
-        return ['be', 'be-x-old', 'be-tarask', 'ru']
+    if code in ['be', 'be-tarask']:
+        return ['be', 'be-tarask', 'ru']
     if code == 'kaa':
         return ['uz', 'ru']
     # Serbocroatian
@@ -474,8 +478,8 @@ def twtranslate(code, twtitle, parameters=None, fallback=True):
         raise TranslationError(
             'Unable to load messages package %s for bundle %s'
             '\nIt can happen due to lack of i18n submodule or files. '
-            'Read https://mediawiki.org/wiki/PWB/i18n'
-            % (_messages_package_name, twtitle))
+            'Read %s/i18n'
+            % (_messages_package_name, twtitle, __url__))
 
     code_needed = False
     # If a site is given instead of a code, use its language
@@ -526,13 +530,13 @@ def twntranslate(code, twtitle, parameters=None):
 
     As an examples, if we had several json dictionaries in test folder like:
 
-    en.json:
+    en.json::
 
       {
           "test-plural": "Bot: Changing %(num)s {{PLURAL:%(num)d|page|pages}}.",
       }
 
-    fr.json:
+    fr.json::
 
       {
           "test-plural": "Robot: Changer %(descr)s {{PLURAL:num|une page|quelques pages}}.",
@@ -612,11 +616,13 @@ def twget_keys(twtitle):
     Return all language codes for a special message.
 
     @param twtitle: The TranslateWiki string title, in <package>-<key> format
+
+    @raises OSError: the package i18n can not be loaded
     """
     # obtain the directory containing all the json files for this package
     package = twtitle.split("-")[0]
     mod = __import__(_messages_package_name, fromlist=[str('__file__')])
-    pathname = os.path.join(os.path.dirname(mod.__file__), package)
+    pathname = os.path.join(next(iter(mod.__path__)), package)
 
     # build a list of languages in that directory
     langs = [filename.partition('.')[0]

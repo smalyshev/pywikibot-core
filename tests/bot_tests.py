@@ -5,7 +5,7 @@
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 #
@@ -14,9 +14,25 @@ import sys
 import pywikibot
 import pywikibot.bot
 
+from pywikibot import i18n
+from pywikibot.tools import PY2
+
 from tests.aspects import (
     unittest, DefaultSiteTestCase, SiteAttributeTestCase, TestCase,
 )
+
+
+class TWNBotTestCase(TestCase):
+
+    """Verify that i18n is available."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Verify that the translations are available."""
+        if not i18n.messages_available():
+            raise unittest.SkipTest("i18n messages package '%s' not available."
+                                    % i18n._messages_package_name)
+        super(TWNBotTestCase, cls).setUpClass()
 
 
 class FakeSaveBotTestCase(TestCase):
@@ -214,7 +230,7 @@ class TestDrySiteBot(TestBotTreatExit, SiteAttributeTestCase):
             self.bot.site = self.de
         with self.assertRaises(ValueError):
             self.bot.site
-        if sys.version_info[0] == 2:
+        if PY2:
             # The exc_info still contains the AttributeError :/
             sys.exc_clear()
         self.bot.treat = self._treat(self._generator())
@@ -222,7 +238,7 @@ class TestDrySiteBot(TestBotTreatExit, SiteAttributeTestCase):
         self.bot.run()
         with self.assertRaises(ValueError):
             self.bot.site
-        if sys.version_info[0] == 2:
+        if PY2:
             # The exc_info still contains the AttributeError :/
             sys.exc_clear()
 
@@ -275,7 +291,7 @@ class TestDrySiteBot(TestBotTreatExit, SiteAttributeTestCase):
                                      post_treat)
 
         # TODO: sys.exc_info is empty in Python 3
-        if sys.version_info[0] > 2:
+        if not PY2:
             exc = None
         else:
             exc = KeyboardInterrupt

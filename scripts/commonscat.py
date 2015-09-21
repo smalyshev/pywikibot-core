@@ -57,16 +57,18 @@ For example to go through all categories:
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 #
 
 import re
 
-from add_text import add_text
 import pywikibot
+
 from pywikibot import i18n, pagegenerators, Bot
+
+from scripts.add_text import add_text
 
 docuReplacements = {
     '&params;': pagegenerators.parameterHelp
@@ -161,7 +163,7 @@ commonscatTemplates = {
 ignoreTemplates = {
     'af': [u'commons'],
     'ar': [u'تحويلة تصنيف', u'كومنز', u'كومونز', u'Commons'],
-    'be-x-old': [u'Commons', u'Commons category'],
+    'be-tarask': [u'Commons', u'Commons category'],
     'cs': [u'Commons', u'Sestřičky', u'Sisterlinks'],
     'da': [u'Commons', u'Commons left', u'Commons2', u'Commonsbilleder',
            u'Commonskat', u'Commonscat2', u'GalleriCommons', u'Søsterlinks'],

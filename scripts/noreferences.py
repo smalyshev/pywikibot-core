@@ -38,7 +38,7 @@ a list of affected articles
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 #
@@ -370,7 +370,7 @@ referencesTemplates = {
                'بداية المراجع', 'نهاية المراجع'],
         'be': [u'Зноскі', u'Примечания', u'Reflist', u'Спіс заўваг',
                u'Заўвагі'],
-        'be-x-old': [u'Зноскі'],
+        'be-tarask': [u'Зноскі'],
         'ca': [u'Referències', u'Reflist', u'Listaref', u'Referència',
                u'Referencies', u'Referències2',
                u'Amaga', u'Amaga ref', u'Amaga Ref', u'Amaga Ref2', u'Apèndix'],
@@ -441,7 +441,7 @@ noTitleRequired = [u'pl', u'be', u'szl']
 maintenance_category = 'cite_error_refs_without_references_category'
 
 
-class XmlDumpNoReferencesPageGenerator:
+class XmlDumpNoReferencesPageGenerator(object):
 
     """
     Generator which will yield Pages that might lack a references tag.
@@ -608,7 +608,7 @@ class NoReferencesBot(Bot):
         # keep removing interwiki links, templates etc. from the bottom.
         # At the end, look at the length of the temp text. That's the position
         # where we'll insert the references section.
-        catNamespaces = '|'.join(self.site.category_namespaces())
+        catNamespaces = '|'.join(self.site.namespaces.CATEGORY)
         categoryPattern = r'\[\[\s*(%s)\s*:[^\n]*\]\]\s*' % catNamespaces
         interwikiPattern = r'\[\[([a-zA-Z\-]+)\s?:([^\[\]\n]*)\]\]\s*'
         # won't work with nested templates
@@ -730,7 +730,7 @@ def main(*args):
             pass
         else:
             cat = pywikibot.Category(site, "%s:%s" % (
-                site.category_namespace(), cat))
+                site.namespaces.CATEGORY, cat))
             gen = cat.articles(namespaces=genFactory.namespaces or [0])
     if gen:
         bot = NoReferencesBot(gen, **options)

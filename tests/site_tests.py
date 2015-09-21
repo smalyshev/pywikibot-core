@@ -5,28 +5,35 @@
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 
-
 import json
-import sys
 import os
+import re
+import sys
+
 from collections import Iterable, Mapping
 from datetime import datetime, timedelta
-import re
 
 import pywikibot
 
 from pywikibot import config
-from pywikibot import async_request, page_put_queue
 from pywikibot.comms import http
-from pywikibot.tools import MediaWikiVersion
 from pywikibot.data import api
+
+from pywikibot import async_request, page_put_queue
+from pywikibot.tools import (
+    MediaWikiVersion,
+    PY2,
+    StringTypes as basestring,
+    UnicodeType as unicode,
+)
 
 from tests.aspects import (
     unittest, TestCase, DeprecationTestCase,
+    TestCaseBase,
     DefaultSiteTestCase,
     DefaultDrySiteTestCase,
     WikimediaDefaultSiteTestCase,
@@ -34,36 +41,36 @@ from tests.aspects import (
     DefaultWikidataClientTestCase,
     AlteredDefaultSiteTestCase,
 )
-from tests.utils import allowed_failure, allowed_failure_if, entered_loop
 from tests.basepage_tests import BasePageLoadRevisionsCachingTestBase
-
-if sys.version_info[0] > 2:
-    basestring = (str, )
-    unicode = str
+from tests.utils import allowed_failure, allowed_failure_if, entered_loop
 
 
-class TestSiteUserDeprecatedFunctions(DefaultSiteTestCase, DeprecationTestCase):
+class TokenTestBase(TestCaseBase):
 
-    """Test cases for Site deprecated methods requiring a live wiki and user."""
+    """Verify token exists before running tests."""
 
-    cached = True
-    user = True
-
-    def test_token(self):
-        """Test ability to get page tokens."""
+    def setUp(self):
+        """Skip test if user does not have token and clear site wallet."""
+        super(TokenTestBase, self).setUp()
         mysite = self.get_site()
-        mainpage = self.get_mainpage()
-        ttype = "edit"
+        ttype = self.token_type
         try:
             token = mysite.tokens[ttype]
         except pywikibot.Error as error_msg:
             self.assertRegex(
                 unicode(error_msg),
                 "Action '[a-z]+' is not allowed for user .* on .* wiki.")
-        else:
-            self.assertEqual(token, mysite.token(mainpage, ttype))
-            self.assertOneDeprecationParts('pywikibot.site.APISite.token',
-                                           "the 'tokens' property")
+            self.assertNotIn(self.token_type, self.site.tokens)
+            raise unittest.SkipTest(error_msg)
+
+        self.token = token
+        self._orig_wallet = self.site.tokens
+        self.site.tokens = pywikibot.site.TokenWallet(self.site)
+
+    def tearDown(self):
+        """Restore site tokens."""
+        self.site.tokens = self._orig_wallet
+        super(TokenTestBase, self).tearDown()
 
 
 class TestSiteObjectDeprecatedFunctions(DefaultSiteTestCase, DeprecationTestCase):
@@ -71,6 +78,17 @@ class TestSiteObjectDeprecatedFunctions(DefaultSiteTestCase, DeprecationTestCase
     """Test cases for Site deprecated methods on a live wiki."""
 
     cached = True
+
+    def test_capitalization(self):
+        """Test that the case method is mirroring the siteinfo."""
+        self.assertEqual(self.site.case(), self.site.siteinfo['case'])
+        self.assertOneDeprecationParts('pywikibot.site.APISite.case',
+                                       'siteinfo or Namespace instance')
+        self.assertIs(self.site.nocapitalize,
+                      self.site.siteinfo['case'] == 'case-sensitive')
+        self.assertOneDeprecationParts(
+            'pywikibot.site.BaseSite.nocapitalize',
+            "APISite.siteinfo['case'] or Namespace.case == 'case-sensitive'")
 
     def test_live_version(self):
         """Test live_version."""
@@ -140,6 +158,17 @@ class TestSiteDryDeprecatedFunctions(DefaultDrySiteTestCase, DeprecationTestCase
         self.assertIs(site.namespaces(), site.namespaces)
         self.assertOneDeprecationParts('Calling the namespaces property',
                                        'it directly')
+
+    def test_messages_star(self):
+        """Test that fetching all messages is deprecated."""
+        # Load all messages and check that '*' is not a valid key.
+        self.assertEqual(self.site.mediawiki_messages('*'),
+                         {'*': 'dummy entry'})
+        self.assertOneDeprecationParts('mediawiki_messages("*")',
+                                       'specific messages')
+        self.assertEqual(self.site.mediawiki_messages(['hello']),
+                         {'hello': 'world'})
+        self.assertNoDeprecation()
 
 
 class TestBaseSiteProperties(TestCase):
@@ -219,7 +248,10 @@ class TestSiteObject(DefaultSiteTestCase):
             self.assertIsInstance(dabcat, pywikibot.Category)
 
         foo = unicode(pywikibot.Link("foo", source=mysite))
-        self.assertEqual(foo, u"[[foo]]" if mysite.nocapitalize else u"[[Foo]]")
+        if self.site.namespaces[0].case == 'case-sensitive':
+            self.assertEqual(foo, '[[foo]]')
+        else:
+            self.assertEqual(foo, '[[Foo]]')
 
         self.assertFalse(mysite.isInterwikiLink("foo"))
         self.assertIsInstance(mysite.redirectRegex().pattern, basestring)
@@ -238,19 +270,23 @@ class TestSiteObject(DefaultSiteTestCase):
 
     def testConstructors(self):
         """Test cases for site constructors."""
-        self.assertEqual(pywikibot.site.APISite.fromDBName('enwiki'),
+        if isinstance(self.site.family, pywikibot.family.WikimediaFamily):
+            site = self.site
+        else:
+            site = None
+        self.assertEqual(pywikibot.site.APISite.fromDBName('enwiki', site),
                          pywikibot.Site('en', 'wikipedia'))
-        self.assertEqual(pywikibot.site.APISite.fromDBName('eswikisource'),
+        self.assertEqual(pywikibot.site.APISite.fromDBName('eswikisource', site),
                          pywikibot.Site('es', 'wikisource'))
-        self.assertEqual(pywikibot.site.APISite.fromDBName('dewikinews'),
+        self.assertEqual(pywikibot.site.APISite.fromDBName('dewikinews', site),
                          pywikibot.Site('de', 'wikinews'))
-        self.assertEqual(pywikibot.site.APISite.fromDBName('ukwikivoyage'),
+        self.assertEqual(pywikibot.site.APISite.fromDBName('ukwikivoyage', site),
                          pywikibot.Site('uk', 'wikivoyage'))
-        self.assertEqual(pywikibot.site.APISite.fromDBName('metawiki'),
+        self.assertEqual(pywikibot.site.APISite.fromDBName('metawiki', site),
                          pywikibot.Site('meta', 'meta'))
-        self.assertEqual(pywikibot.site.APISite.fromDBName('commonswiki'),
+        self.assertEqual(pywikibot.site.APISite.fromDBName('commonswiki', site),
                          pywikibot.Site('commons', 'commons'))
-        self.assertEqual(pywikibot.site.APISite.fromDBName('wikidatawiki'),
+        self.assertEqual(pywikibot.site.APISite.fromDBName('wikidatawiki', site),
                          pywikibot.Site('wikidata', 'wikidata'))
 
     def testLanguageMethods(self):
@@ -268,6 +304,7 @@ class TestSiteObject(DefaultSiteTestCase):
 
         for item in mysite.validLanguageLinks():
             self.assertIn(item, langs)
+            self.assertIsNone(self.site.namespaces.lookup_name(item))
 
     def testNamespaceMethods(self):
         """Test cases for methods manipulating namespace names."""
@@ -292,13 +329,16 @@ class TestSiteObject(DefaultSiteTestCase):
                             for key in ns
                             for item in mysite.namespace(key, True)))
 
-    def testApiMethods(self):
-        """Test generic ApiSite methods."""
+    def test_user_attributes_return_types(self):
+        """Test returned types of user attributes."""
         mysite = self.get_site()
         self.assertIsInstance(mysite.logged_in(), bool)
         self.assertIsInstance(mysite.logged_in(True), bool)
         self.assertIsInstance(mysite.userinfo, dict)
 
+    def test_messages(self):
+        """Test MediaWiki: messages."""
+        mysite = self.get_site()
         for msg in ('about', 'aboutpage', 'aboutsite', 'accesskey-n-portal'):
             self.assertTrue(mysite.has_mediawiki_message(msg))
             self.assertIsInstance(mysite.mediawiki_message(msg), basestring)
@@ -306,28 +346,31 @@ class TestSiteObject(DefaultSiteTestCase):
         self.assertRaises(KeyError, mysite.mediawiki_message, "nosuchmessage")
 
         msg = ('about', 'aboutpage')
+        about_msgs = self.site.mediawiki_messages(msg)
         self.assertIsInstance(mysite.mediawiki_messages(msg), dict)
         self.assertTrue(mysite.mediawiki_messages(msg))
+        self.assertEqual(len(about_msgs), 2)
+        self.assertIn(msg[0], about_msgs)
+
+        # mediawiki_messages must be given a list; using a string will split it
+        self.assertRaises(KeyError, self.site.mediawiki_messages, 'about')
 
         msg = ("nosuchmessage1", "about", "aboutpage", "nosuchmessage")
         self.assertFalse(mysite.has_all_mediawiki_messages(msg))
         self.assertRaises(KeyError, mysite.mediawiki_messages, msg)
-
-        # Load all messages and check that '*' is not a valid key.
-        self.assertIsInstance(mysite.mediawiki_messages('*'), dict)
-        self.assertGreater(len(mysite.mediawiki_messages(['*'])), 10)
-        self.assertNotIn('*', mysite.mediawiki_messages(['*']))
 
         self.assertIsInstance(mysite.server_time(), pywikibot.Timestamp)
         ts = mysite.getcurrenttimestamp()
         self.assertIsInstance(ts, basestring)
         self.assertRegex(ts, r'(19|20)\d\d[0-1]\d[0-3]\d[0-2]\d[0-5]\d[0-5]\d')
 
-        self.assertIsInstance(mysite.siteinfo, pywikibot.site.Siteinfo)
         self.assertIsInstance(mysite.months_names, list)
-        ver = mysite.version()
-        self.assertIsInstance(ver, basestring)
-        self.assertIsNotNone(re.search('^\d+\.\d+.*?\d*$', ver))
+        self.assertEqual(len(mysite.months_names), 12)
+        self.assertTrue(all(isinstance(month, tuple)
+                            for month in mysite.months_names))
+        self.assertTrue(all(len(month) == 2
+                            for month in mysite.months_names))
+
         self.assertEqual(mysite.list_to_text(('pywikibot',)), 'pywikibot')
 
     def testEnglishSpecificMethods(self):
@@ -559,6 +602,9 @@ class TestSiteGenerators(DefaultSiteTestCase):
 
     def testAllLinks(self):
         """Test the site.alllinks() method."""
+        if self.site.family.name == 'wsbeta':
+            raise unittest.SkipTest('Test fails on betawiki; T69931')
+
         mysite = self.get_site()
         fwd = list(mysite.alllinks(total=10))
         self.assertLessEqual(len(fwd), 10)
@@ -941,7 +987,17 @@ class SiteUserTestCase(DefaultSiteTestCase):
     def testLogEvents(self):
         """Test the site.logevents() method."""
         mysite = self.get_site()
-        mainpage = self.get_mainpage()
+        for entry in mysite.logevents(user=mysite.user(), total=3):
+            self.assertEqual(entry.user(), mysite.user())
+
+
+class TestLogEvents(DefaultSiteTestCase):
+
+    """Test logevents methods."""
+
+    def test_logevents(self):
+        """Test logevents method."""
+        mysite = self.get_site()
         le = list(mysite.logevents(total=10))
         self.assertLessEqual(len(le), 10)
         self.assertTrue(all(isinstance(entry, pywikibot.logentries.LogEntry)
@@ -950,11 +1006,18 @@ class SiteUserTestCase(DefaultSiteTestCase):
                     "move", "import", "patrol", "merge"):
             for entry in mysite.logevents(logtype=typ, total=3):
                 self.assertEqual(entry.type(), typ)
+
+    def test_logevents_mainpage(self):
+        """Test logevents method on the main page."""
+        mysite = self.get_site()
+        mainpage = self.get_mainpage()
         for entry in mysite.logevents(page=mainpage, total=3):
             self.assertEqual(entry.page().title(), mainpage.title())
             self.assertEqual(entry.page(), mainpage)
-        for entry in mysite.logevents(user=mysite.user(), total=3):
-            self.assertEqual(entry.user(), mysite.user())
+
+    def test_logevents_timestamp(self):
+        """Test logevents method."""
+        mysite = self.get_site()
         for entry in mysite.logevents(
                 start=pywikibot.Timestamp.fromISOformat('2008-09-01T00:00:01Z'), total=5):
             self.assertIsInstance(entry, pywikibot.logentries.LogEntry)
@@ -986,6 +1049,33 @@ class SiteUserTestCase(DefaultSiteTestCase):
                           start=pywikibot.Timestamp.fromISOformat("2008-02-03T23:59:59Z"),
                           end=pywikibot.Timestamp.fromISOformat('2008-02-03T00:00:01Z'),
                           reverse=True, total=5)
+
+
+class TestLogPages(DefaultSiteTestCase, DeprecationTestCase):
+
+    """Test logpages methods."""
+
+    def test_logpages(self):
+        """Test the deprecated site.logpages() method."""
+        le = list(self.site.logpages(number=10))
+        self.assertOneDeprecation()
+        self.assertLessEqual(len(le), 10)
+        for entry in le:
+            self.assertIsInstance(entry, tuple)
+            self.assertIsInstance(entry[0], pywikibot.Page)
+            self.assertIsInstance(entry[1], basestring)
+            self.assertIsInstance(
+                entry[2], long if PY2 and entry[2] > sys.maxint else int)  # noqa
+            self.assertIsInstance(entry[3], basestring)
+
+    def test_logpages_dump(self):
+        """Test the deprecated site.logpages() method using dump mode."""
+        le = list(self.site.logpages(number=10, dump=True))
+        self.assertOneDeprecation()
+        self.assertLessEqual(len(le), 10)
+        for entry in le:
+            self.assertIsInstance(entry, dict)
+            self.assertIn('title', entry)
 
 
 class TestRecentChanges(DefaultSiteTestCase):
@@ -1182,9 +1272,9 @@ class SearchTestCase(DefaultSiteTestCase):
             raise
 
 
-class TestUserContribs(DefaultSiteTestCase):
+class TestUserContribsAsUser(DefaultSiteTestCase):
 
-    """Test site method site.usercontribs()."""
+    """Test site method site.usercontribs() with bot user."""
 
     user = True
 
@@ -1197,74 +1287,6 @@ class TestUserContribs(DefaultSiteTestCase):
                             for contrib in uc))
         self.assertTrue(all('user' in contrib and contrib['user'] == mysite.user()
                             for contrib in uc))
-
-    def test_user_prefix(self):
-        """Test the site.usercontribs() method with userprefix."""
-        mysite = self.get_site()
-        for contrib in mysite.usercontribs(userprefix="John", total=5):
-            self.assertIsInstance(contrib, dict)
-            for key in ("user", "title", "ns", "pageid", "revid"):
-                self.assertIn(key, contrib)
-            self.assertTrue(contrib["user"].startswith("John"))
-
-    def test_user_prefix_range(self):
-        """Test the site.usercontribs() method."""
-        mysite = self.get_site()
-        for contrib in mysite.usercontribs(
-                userprefix='Jane',
-                start=pywikibot.Timestamp.fromISOformat("2008-10-06T01:02:03Z"),
-                total=5):
-            self.assertLessEqual(contrib['timestamp'], "2008-10-06T01:02:03Z")
-
-        for contrib in mysite.usercontribs(
-                userprefix='Jane',
-                end=pywikibot.Timestamp.fromISOformat("2008-10-07T02:03:04Z"),
-                total=5):
-            self.assertGreaterEqual(contrib['timestamp'], "2008-10-07T02:03:04Z")
-
-    def test_user_prefix_reverse(self):
-        """Test the site.usercontribs() method with range reversed."""
-        mysite = self.get_site()
-        for contrib in mysite.usercontribs(
-                userprefix='Brion',
-                start=pywikibot.Timestamp.fromISOformat("2008-10-08T03:05:07Z"),
-                total=5, reverse=True):
-            self.assertGreaterEqual(contrib['timestamp'], "2008-10-08T03:05:07Z")
-
-        for contrib in mysite.usercontribs(
-                userprefix='Brion',
-                end=pywikibot.Timestamp.fromISOformat("2008-10-09T04:06:08Z"),
-                total=5, reverse=True):
-            self.assertLessEqual(contrib['timestamp'], "2008-10-09T04:06:08Z")
-
-        for contrib in mysite.usercontribs(
-                userprefix='Tim',
-                start=pywikibot.Timestamp.fromISOformat("2008-10-10T11:59:59Z"),
-                end=pywikibot.Timestamp.fromISOformat("2008-10-10T00:00:01Z"),
-                total=5):
-            self.assertTrue(
-                "2008-10-10T00:00:01Z" <= contrib['timestamp'] <= "2008-10-10T11:59:59Z")
-
-    def test_invalid_range(self):
-        """Test the site.usercontribs() method with invalid parameters."""
-        mysite = self.get_site()
-        for contrib in mysite.usercontribs(
-                userprefix='Tim',
-                start=pywikibot.Timestamp.fromISOformat("2008-10-11T06:00:01Z"),
-                end=pywikibot.Timestamp.fromISOformat("2008-10-11T23:59:59Z"),
-                reverse=True, total=5):
-            self.assertTrue(
-                "2008-10-11T06:00:01Z" <= contrib['timestamp'] <= "2008-10-11T23:59:59Z")
-        # start earlier than end
-        self.assertRaises(pywikibot.Error, mysite.usercontribs,
-                          userprefix="Jim",
-                          start="2008-10-03T00:00:01Z",
-                          end="2008-10-03T23:59:59Z", total=5)
-        # reverse: end earlier than start
-        self.assertRaises(pywikibot.Error, mysite.usercontribs,
-                          userprefix="Jim",
-                          start="2008-10-03T23:59:59Z",
-                          end="2008-10-03T00:00:01Z", reverse=True, total=5)
 
     def test_namespaces(self):
         """Test the site.usercontribs() method using namespaces."""
@@ -1293,6 +1315,80 @@ class TestUserContribs(DefaultSiteTestCase):
                                            showMinor=False, total=5):
             self.assertIsInstance(contrib, dict)
             self.assertNotIn("minor", contrib)
+
+
+class TestUserContribsWithoutUser(DefaultSiteTestCase):
+
+    """Test site method site.usercontribs() without bot user."""
+
+    def test_user_prefix(self):
+        """Test the site.usercontribs() method with userprefix."""
+        mysite = self.get_site()
+        for contrib in mysite.usercontribs(userprefix="John", total=5):
+            self.assertIsInstance(contrib, dict)
+            for key in ("user", "title", "ns", "pageid", "revid"):
+                self.assertIn(key, contrib)
+            self.assertTrue(contrib["user"].startswith("John"))
+
+    def test_user_prefix_range(self):
+        """Test the site.usercontribs() method."""
+        mysite = self.get_site()
+        for contrib in mysite.usercontribs(
+                userprefix='Jane',
+                start=pywikibot.Timestamp.fromISOformat("2008-10-06T01:02:03Z"),
+                total=5):
+            self.assertLessEqual(contrib['timestamp'], "2008-10-06T01:02:03Z")
+
+        for contrib in mysite.usercontribs(
+                userprefix='Jane',
+                end=pywikibot.Timestamp.fromISOformat("2008-10-07T02:03:04Z"),
+                total=5):
+            self.assertGreaterEqual(contrib['timestamp'], "2008-10-07T02:03:04Z")
+
+        for contrib in mysite.usercontribs(
+                userprefix='Tim',
+                start=pywikibot.Timestamp.fromISOformat("2008-10-10T11:59:59Z"),
+                end=pywikibot.Timestamp.fromISOformat("2008-10-10T00:00:01Z"),
+                total=5):
+            self.assertTrue(
+                "2008-10-10T00:00:01Z" <= contrib['timestamp'] <= "2008-10-10T11:59:59Z")
+
+    def test_user_prefix_reverse(self):
+        """Test the site.usercontribs() method with range reversed."""
+        mysite = self.get_site()
+        for contrib in mysite.usercontribs(
+                userprefix='Brion',
+                start=pywikibot.Timestamp.fromISOformat("2008-10-08T03:05:07Z"),
+                total=5, reverse=True):
+            self.assertGreaterEqual(contrib['timestamp'], "2008-10-08T03:05:07Z")
+
+        for contrib in mysite.usercontribs(
+                userprefix='Brion',
+                end=pywikibot.Timestamp.fromISOformat("2008-10-09T04:06:08Z"),
+                total=5, reverse=True):
+            self.assertLessEqual(contrib['timestamp'], "2008-10-09T04:06:08Z")
+
+        for contrib in mysite.usercontribs(
+                userprefix='Tim',
+                start=pywikibot.Timestamp.fromISOformat("2008-10-11T06:00:01Z"),
+                end=pywikibot.Timestamp.fromISOformat("2008-10-11T23:59:59Z"),
+                reverse=True, total=5):
+            self.assertTrue(
+                "2008-10-11T06:00:01Z" <= contrib['timestamp'] <= "2008-10-11T23:59:59Z")
+
+    def test_invalid_range(self):
+        """Test the site.usercontribs() method with invalid parameters."""
+        mysite = self.get_site()
+        # start earlier than end
+        self.assertRaises(pywikibot.Error, mysite.usercontribs,
+                          userprefix="Jim",
+                          start="2008-10-03T00:00:01Z",
+                          end="2008-10-03T23:59:59Z", total=5)
+        # reverse: end earlier than start
+        self.assertRaises(pywikibot.Error, mysite.usercontribs,
+                          userprefix="Jim",
+                          start="2008-10-03T23:59:59Z",
+                          end="2008-10-03T00:00:01Z", reverse=True, total=5)
 
 
 class SiteWatchlistRevsTestCase(DefaultSiteTestCase):
@@ -1553,29 +1649,61 @@ class TestSiteSysopWrite(TestCase):
         self.assertTrue(len(revs) > 2)
 
 
-class SiteUserTestCase2(DefaultSiteTestCase):
+class TestUsernameInUsers(DefaultSiteTestCase):
 
-    """More tests that rely on a user account."""
+    """Test that the user account can be found in users list."""
 
     user = True
+    cached = True
 
-    def testUsers(self):
-        """Test the site.users() method."""
+    def test_username_in_users(self):
+        """Test the site.users() method with bot username."""
         mysite = self.get_site()
         us = list(mysite.users(mysite.user()))
         self.assertEqual(len(us), 1)
         self.assertIsInstance(us[0], dict)
+
+
+class TestUserList(DefaultSiteTestCase):
+
+    """Test usernames Jimbo Wales, Brion VIBBER and Tim Starling."""
+
+    cached = True
+
+    def testUsers(self):
+        """Test the site.users() method with preset usernames."""
+        mysite = self.site
+        cnt = 0
         for user in mysite.users(
                 ["Jimbo Wales", "Brion VIBBER", "Tim Starling"]):
             self.assertIsInstance(user, dict)
             self.assertTrue(user["name"]
                             in ["Jimbo Wales", "Brion VIBBER", "Tim Starling"])
+            cnt += 1
+        if not cnt:
+            raise unittest.SkipTest('Test usernames not found')
+
+
+class PatrolTestCase(TokenTestBase, TestCase):
+
+    """Test patrol method."""
+
+    family = 'test'
+    code = 'test'
+
+    user = True
+    token_type = 'patrol'
+    write = True
 
     def testPatrol(self):
         """Test the site.patrol() method."""
         mysite = self.get_site()
 
-        rc = list(mysite.recentchanges(total=1))[0]
+        rc = list(mysite.recentchanges(total=1))
+        if not rc:
+            raise unittest.SkipTest('no recent changes to patrol')
+
+        rc = rc[0]
 
         # site.patrol() needs params
         self.assertRaises(pywikibot.Error, lambda x: list(x), mysite.patrol())
@@ -1735,10 +1863,48 @@ class TestSiteTokens(DefaultSiteTestCase):
     def testInvalidToken(self):
         self.assertRaises(pywikibot.Error, lambda t: self.mysite.tokens[t], "invalidtype")
 
-    def test_deprecated_token(self):
+
+class TestDeprecatedEditTokenFunctions(TokenTestBase,
+                                       DefaultSiteTestCase,
+                                       DeprecationTestCase):
+
+    """Test cases for Site edit token deprecated methods."""
+
+    cached = True
+    user = True
+    token_type = 'edit'
+
+    def test_token(self):
+        """Test ability to get page tokens using site.tokens."""
+        token = self.token
+        mysite = self.get_site()
+        mainpage = self.get_mainpage()
+        ttype = "edit"
+        self.assertEqual(token, mysite.token(mainpage, ttype))
+        self.assertOneDeprecationParts('pywikibot.site.APISite.token',
+                                       "the 'tokens' property")
+
+    def test_getToken(self):
+        """Test ability to get page tokens using site.getToken."""
+        self.mysite = self.site
         self.assertEqual(self.mysite.getToken(), self.mysite.tokens['edit'])
+        self.assertOneDeprecationParts('pywikibot.site.APISite.getToken',
+                                       "the 'tokens' property")
+
+
+class TestDeprecatedPatrolToken(DefaultSiteTestCase, DeprecationTestCase):
+
+    """Test cases for Site patrol token deprecated methods."""
+
+    cached = True
+    user = True
+
+    def test_getPatrolToken(self):
+        """Test site.getPatrolToken."""
+        self.mysite = self.site
         try:
             self.assertEqual(self.mysite.getPatrolToken(), self.mysite.tokens['patrol'])
+            self.assertOneDeprecation()
         except pywikibot.Error as error_msg:
             self.assertRegex(
                 unicode(error_msg),
@@ -1815,7 +1981,6 @@ class TestSiteInfo(DefaultSiteTestCase):
             datetime.strptime(mysite.siteinfo['time'], '%Y-%m-%dT%H:%M:%SZ'),
             datetime)
         self.assertIn(mysite.siteinfo['case'], ["first-letter", "case-sensitive"])
-        self.assertEqual(mysite.case(), mysite.siteinfo['case'])
         self.assertEqual(re.findall("\$1", mysite.siteinfo['articlepath']), ["$1"])
 
     def test_properties_with_defaults(self):
@@ -1849,7 +2014,7 @@ class TestSiteInfo(DefaultSiteTestCase):
         self.assertNotIn(not_exists, mysite.siteinfo)
         self.assertEqual(len(mysite.siteinfo.get(not_exists)), 0)
         self.assertFalse(entered_loop(mysite.siteinfo.get(not_exists)))
-        if sys.version_info[0] == 2:
+        if PY2:
             self.assertFalse(entered_loop(mysite.siteinfo.get(not_exists).iteritems()))
             self.assertFalse(entered_loop(mysite.siteinfo.get(not_exists).itervalues()))
             self.assertFalse(entered_loop(mysite.siteinfo.get(not_exists).iterkeys()))
@@ -2471,19 +2636,18 @@ class TestDataSiteSearchEntities(WikidataTestCase):
     def test_general(self):
         """Test basic search_entities functionality."""
         datasite = self.get_repo()
-        pages = datasite.search_entities('abc', 'en', limit=50,
-                                         site=self.get_site())
+        pages = datasite.search_entities('abc', 'en', limit=50)
         self.assertGreater(len(list(pages)), 0)
         self.assertLessEqual(len(list(pages)), 50)
         pages = datasite.search_entities('alphabet', 'en', type='property',
-                                         limit=50, site=self.get_site())
+                                         limit=50)
         self.assertGreater(len(list(pages)), 0)
         self.assertLessEqual(len(list(pages)), 50)
 
     def test_continue(self):
         """Test that continue parameter in search_entities works."""
         datasite = self.get_repo()
-        kwargs = {'limit': 50, 'site': self.get_site()}
+        kwargs = {'limit': 50}
         pages = datasite.search_entities('Rembrandt', 'en', **kwargs)
         kwargs['continue'] = 1
         pages_continue = datasite.search_entities('Rembrandt', 'en', **kwargs)
@@ -2678,8 +2842,8 @@ class TestSingleCodeFamilySite(AlteredDefaultSiteTestCase):
         self.assertFalse(site.obsolete)
         self.assertEqual(site.family.hostname('en'), 'lyrics.wikia.com')
 
-        self.assertRaises(KeyError, site.family.hostname, 'lyrics')
-        self.assertRaises(KeyError, site.family.hostname, 'lyricwiki')
+        self.assertEqual(site.family.hostname('lyrics'), 'lyrics.wikia.com')
+        self.assertEqual(site.family.hostname('lyricwiki'), 'lyrics.wikia.com')
 
         self.assertRaises(pywikibot.UnknownSite, pywikibot.Site,
                           'lyricwiki', 'lyricwiki')
@@ -2695,7 +2859,7 @@ class TestSingleCodeFamilySite(AlteredDefaultSiteTestCase):
         self.assertIsInstance(site.namespaces, Mapping)
         self.assertFalse(site.obsolete)
 
-        self.assertRaises(KeyError, site.family.hostname, 'en')
+        self.assertEqual(site.family.hostname('en'), 'commons.wikimedia.org')
 
         pywikibot.config.family = 'commons'
         pywikibot.config.mylang = 'de'

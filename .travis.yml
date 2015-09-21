@@ -1,4 +1,5 @@
 # See tests/README.rst for instructions for using travis with developer builds.
+
 language: python
 
 sudo: false
@@ -9,10 +10,9 @@ python:
   - '3.4'
   - '2.6'
 
-# OSX builds are not yet available
+# OSX builds do not yet support Python
 os:
   - linux
-  - osx
 
 addons:
   apt:
@@ -42,16 +42,19 @@ before_script:
   - pip install -r dev-requirements.txt
 
 script:
+  # Install security packages for requests to support HTTPS in site_detect
   - if [[ "$PYSETUP_TEST_EXTRAS" != '1' ]]; then
-      pip install requests mwoauth ;
+      pip install mwoauth -r requests-requirements.txt ;
     fi
 
   - mkdir ~/.pywikibot
 
-  - if [[ "$FAMILY" == 'oraintest' ]]; then python pwb.py generate_family_file 'https://test.orain.org/' oraintest ; fi
   - python pwb.py generate_family_file 'https://wiki.musicbrainz.org/' musicbrainz
   - if [[ $FAMILY == 'wpbeta' ]]; then
-      python -m generate_family_file 'http://'$LANGUAGE'.wikipedia.beta.wmflabs.org/' 'wpbeta' 'y' ;
+      python -m generate_family_file 'http://'$LANGUAGE'.wikipedia.beta.wmflabs.org/' 'wpbeta' 'n' ;
+    fi
+  - if [[ $FAMILY == 'wsbeta' ]]; then
+      python -m generate_family_file 'http://'$LANGUAGE'.wikisource.beta.wmflabs.org/' 'wsbeta' 'n' ;
     fi
 
   - python -W error::UserWarning -m generate_user_files -dir:~/.pywikibot/ -family:$FAMILY -lang:$LANGUAGE -v -user:"$PYWIKIBOT2_USERNAME"
@@ -112,13 +115,13 @@ matrix:
     - python: '2.7_with_system_site_packages'  # equivalent to virtualenv: system_site_packages: true
       env: LANGUAGE=he FAMILY=wikivoyage SITE_ONLY=1
     - python: '2.7'
-      env: LANGUAGE=en FAMILY=wpbeta SITE_ONLY=1
-    - python: '3.4'
+      env: LANGUAGE=en FAMILY=wpbeta SITE_ONLY=1 OAUTH_DOMAIN="en.wikipedia.beta.wmflabs.org"
+    - python: '3.3'
       env: LANGUAGE=zh FAMILY=wpbeta SITE_ONLY=1 OAUTH_DOMAIN="zh.wikipedia.beta.wmflabs.org"
+    - python: '3.4'
+      env: LANGUAGE=en FAMILY=wsbeta SITE_ONLY=1
     - python: '2.7'
       env: LANGUAGE=wikia FAMILY=wikia PYWIKIBOT2_TEST_NO_RC=1
-    - python: '3.3'
-      env: LANGUAGE=en FAMILY=oraintest SITE_ONLY=1 OAUTH_DOMAIN="test.orain.org"
     - python: '3.3'
       env: LANGUAGE=en FAMILY=musicbrainz SITE_ONLY=1
     - python: '3.4'

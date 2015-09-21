@@ -5,24 +5,24 @@
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 
 import datetime
-import sys
 
 import pywikibot
+
 from pywikibot.logentries import LogEntryFactory
-from pywikibot.tools import MediaWikiVersion
+from pywikibot.tools import (
+    MediaWikiVersion,
+    UnicodeType as unicode,
+)
 
 from tests.aspects import (
     unittest, MetaTestCaseClass, TestCase, DeprecationTestCase
 )
 from tests.utils import add_metaclass
-
-if sys.version_info[0] > 2:
-    unicode = str
 
 
 class TestLogentriesBase(TestCase):

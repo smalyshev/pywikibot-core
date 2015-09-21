@@ -11,7 +11,7 @@ and return a unicode string.
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 #
@@ -38,7 +38,11 @@ import pywikibot
 from pywikibot import config2 as config
 from pywikibot.exceptions import InvalidTitle
 from pywikibot.family import Family
-from pywikibot.tools import OrderedDict, DeprecatedRegex
+from pywikibot.tools import (
+    DeprecatedRegex,
+    OrderedDict,
+    issue_deprecation_warning
+)
 
 # cache for replaceExcept to avoid recompile or regexes each call
 _regex_cache = {}
@@ -773,7 +777,7 @@ def getLanguageLinks(text, insite=None, pageLink="[[]]",
             # we want the actual page objects rather than the titles
             site = pywikibot.Site(code=lang, fam=fam)
             try:
-                result[site] = pywikibot.Page(site, pagetitle, insite=insite)
+                result[site] = pywikibot.Page(site, pagetitle)
             except pywikibot.InvalidTitle:
                 pywikibot.output(u'[getLanguageLinks] Text contains invalid '
                                  u'interwiki link [[%s:%s]].'
@@ -793,12 +797,12 @@ def removeLanguageLinks(text, site=None, marker=''):
     """
     if site is None:
         site = pywikibot.Site()
-    if not site.validLanguageLinks():
-        return text
     # This regular expression will find every interwiki link, plus trailing
     # whitespace.
     languages = '|'.join(site.validLanguageLinks() +
                          list(site.family.obsolete.keys()))
+    if not languages:
+        return text
     interwikiR = re.compile(r'\[\[(%s)\s?:[^\[\]\n]*\]\][\s]*'
                             % languages, re.IGNORECASE)
     text = replaceExcept(text, interwikiR, '',
@@ -843,6 +847,9 @@ def replaceLanguageLinks(oldtext, new, site=None, addOnly=False,
     cseparator = site.family.category_text_separator
     separatorstripped = separator.strip()
     cseparatorstripped = cseparator.strip()
+    do_not_strip = oldtext.strip() != oldtext
+    if do_not_strip:
+        issue_deprecation_warning('Using unstripped text', 'stripped text', 2)
     if addOnly:
         s2 = oldtext
     else:
@@ -910,7 +917,7 @@ def replaceLanguageLinks(oldtext, new, site=None, addOnly=False,
                     newtext = s2.replace(marker, '').strip() + separator + s
     else:
         newtext = s2.replace(marker, '')
-    return newtext
+    return newtext if do_not_strip else newtext.strip()
 
 
 def interwikiFormat(links, insite=None):
@@ -993,7 +1000,7 @@ def getCategoryLinks(text, site=None, include=[]):
     # Ignore category links within nowiki tags, pre tags, includeonly tags,
     # and HTML comments
     text = removeDisabledParts(text, include=include)
-    catNamespace = '|'.join(site.category_namespaces())
+    catNamespace = '|'.join(site.namespaces.CATEGORY)
     R = re.compile(r'\[\[\s*(?P<namespace>%s)\s*:\s*(?P<rest>.+?)\]\]'
                    % catNamespace, re.I)
     for match in R.finditer(text):
@@ -1025,7 +1032,7 @@ def removeCategoryLinks(text, site=None, marker=''):
     # ASCII letters and hyphens.
     if site is None:
         site = pywikibot.Site()
-    catNamespace = '|'.join(site.category_namespaces())
+    catNamespace = '|'.join(site.namespaces.CATEGORY)
     categoryR = re.compile(r'\[\[\s*(%s)\s*:.*?\]\]\s*' % catNamespace, re.I)
     text = replaceExcept(text, categoryR, '',
                          ['nowiki', 'comment', 'math', 'pre', 'source', 'includeonly'],
@@ -1070,7 +1077,7 @@ def replaceCategoryInPlace(oldtext, oldcat, newcat, site=None):
     if site is None:
         site = pywikibot.Site()
 
-    catNamespace = '|'.join(site.category_namespaces())
+    catNamespace = '|'.join(site.namespaces.CATEGORY)
     title = oldcat.title(withNamespace=False)
     if not title:
         return

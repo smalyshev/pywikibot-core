@@ -5,7 +5,7 @@
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 
@@ -56,6 +56,10 @@ class TestValidTemplateMeta(MetaTestCaseClass):
             return test_template
 
         # create test methods for package messages processed by unittest
+        if not i18n.messages_available():
+            raise unittest.SkipTest("i18n messages package '%s' not available."
+                                    % i18n._messages_package_name)
+
         site = pywikibot.Site(dct['code'], dct['family'])
         codes = site.family.languages_by_size
         del site
@@ -65,6 +69,8 @@ class TestValidTemplateMeta(MetaTestCaseClass):
                 current_site = pywikibot.Site(code, dct['family'])
                 test_name = ("test_%s_%s" % (package, code)).replace('-', '_')
                 dct[test_name] = test_method(current_site)
+                dct[test_name].__doc__ = 'Test {0} with language {1}'.format(
+                    package, code)
         return super(TestValidTemplateMeta, cls).__new__(cls, name, bases, dct)
 
 

@@ -18,7 +18,7 @@ These parameters are supported to specify which pages titles to print:
 #
 # Distributed under the terms of the MIT license.
 #
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 #
@@ -100,27 +100,36 @@ parameterHelp = u"""\
 
 -logevents        Work on articles that were on a specified Special:Log.
                   The value may be a comma separated list of three values:
+
                       logevent,username,total
+
                   To use the default value, use an empty string.
                   You have options for every type of logs given by the
                   log event parameter which could be one of the following:
+
                       block, protect, rights, delete, upload, move, import,
                       patrol, merge, suppress, review, stable, gblblock,
                       renameuser, globalauth, gblrights, abusefilter, newusers
+
                   It uses the default number of pages 10.
+
                   Examples:
+
                   -logevents:move gives pages from move log (usually redirects)
                   -logevents:delete,,20 gives 20 pages from deletion log
                   -logevents:protect,Usr gives pages from protect by user Usr
                   -logevents:patrol,Usr,20 gives 20 patroled pages by user Usr
+
                   In some cases it must be written as -logevents:"patrol,Usr,20"
 
 -namespaces       Filter the page generator to only yield pages in the
 -namespace        specified namespaces. Separate multiple namespace
 -ns               numbers or names with commas.
                   Examples:
+
                   -ns:0,2,4
                   -ns:Help,MediaWiki
+
                   If used with -newpages, -namepace/ns must be provided
                   before -newpages.
                   If used with -recentchanges, efficiency is improved if
@@ -2138,7 +2147,7 @@ def LiveRCPageGenerator(site=None, total=None):
 # following classes just ported from version 1 without revision; not tested
 
 
-class YahooSearchPageGenerator:
+class YahooSearchPageGenerator(object):
 
     """
     Page generator using Yahoo! search results.
@@ -2197,13 +2206,14 @@ class YahooSearchPageGenerator:
                 yield page
 
 
-class GoogleSearchPageGenerator:
+class GoogleSearchPageGenerator(object):
 
     """
     Page generator using Google search results.
 
-    To use this generator, you need to install the package 'google'.
-    https://pypi.python.org/pypi/google
+    To use this generator, you need to install the package 'google':
+
+        L{https://pypi.python.org/pypi/google}
 
     This package has been available since 2010, hosted on github
     since 2012, and provided by pypi since 2013.
@@ -2230,6 +2240,7 @@ class GoogleSearchPageGenerator:
 
         The terms of service as at June 2014 give two conditions that
         may apply to use of search:
+
             1. Dont access [Google Services] using a method other than
                the interface and the instructions that [they] provide.
             2. Don't remove, obscure, or alter any legal notices
@@ -2411,7 +2422,7 @@ def WikibaseSearchItemPageGenerator(text, language=None, total=None, site=None):
         language = site.lang
     repo = site.data_repository()
 
-    data = repo.search_entities(text, language, limit=total, site=site)
+    data = repo.search_entities(text, language, limit=total)
     pywikibot.output(u'retrieved %d items' % len(list(data)))
     for item in data:
         yield pywikibot.ItemPage(repo, item['id'])
