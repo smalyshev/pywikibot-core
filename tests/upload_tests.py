@@ -13,13 +13,9 @@ from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 
-import os
-
 import pywikibot
 
-from pywikibot.data.api import APIError
-
-from tests import _images_dir
+from tests import join_images_path
 from tests.aspects import unittest, TestCase
 
 
@@ -32,22 +28,20 @@ class TestUpload(TestCase):
     family = 'wikipedia'
     code = 'test'
 
-    sounds_png = os.path.join(_images_dir, 'MP_sounds.png')
-    arrow_png = os.path.join(_images_dir, '1rightarrow.png')
+    sounds_png = join_images_path('MP_sounds.png')
+    arrow_png = join_images_path('1rightarrow.png')
 
     def test_png(self):
         """Test uploading a png using Site.upload."""
         page = pywikibot.FilePage(self.site, 'MP_sounds-pwb.png')
-        local_filename = os.path.join(_images_dir, 'MP_sounds.png')
-        self.site.upload(page, source_filename=local_filename,
+        self.site.upload(page, source_filename=self.sounds_png,
                          comment='pywikibot test',
                          ignore_warnings=True)
 
     def test_png_chunked(self):
         """Test uploading a png in two chunks using Site.upload."""
         page = pywikibot.FilePage(self.site, 'MP_sounds-pwb-chunked.png')
-        local_filename = os.path.join(_images_dir, 'MP_sounds.png')
-        self.site.upload(page, source_filename=local_filename,
+        self.site.upload(page, source_filename=self.sounds_png,
                          comment='pywikibot test',
                          ignore_warnings=True, chunk_size=1024)
 
@@ -107,9 +101,8 @@ class TestUpload(TestCase):
         self._finish_upload(chunk_size, self.sounds_png)
 
         # Check if it's still cached
-        with self.assertRaises(APIError) as cm:
+        with self.assertAPIError('siiinvalidsessiondata') as cm:
             self.site.stash_info(self._file_key)
-        self.assertEqual(cm.exception.code, 'siiinvalidsessiondata')
         self.assertTrue(cm.exception.info.startswith('File not found'),
                         'info ({0}) did not start with '
                         '"File not found"'.format(cm.exception.info))

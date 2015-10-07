@@ -17,11 +17,16 @@ from pywikibot.tools import (
     StringTypes,
 )
 
-from tests import _root_dir
+from tests import join_root_path
 from tests.aspects import unittest, DefaultSiteTestCase, MetaTestCaseClass, PwbTestCase
 from tests.utils import allowed_failure, execute_pwb, add_metaclass
 
-scripts_path = os.path.join(_root_dir, 'scripts')
+scripts_path = join_root_path('scripts')
+
+if PY2:
+    TK_IMPORT = 'Tkinter'
+else:
+    TK_IMPORT = 'tkinter'
 
 # These dependencies are not always the package name which is in setup.py.
 # e.g. 'PIL.ImageTk' is a object provided by several different pypi packages,
@@ -29,14 +34,17 @@ scripts_path = os.path.join(_root_dir, 'scripts')
 # Here, it doesnt matter which pypi package was requested and installed.
 # Here, the name given to the module which will be imported is required.
 script_deps = {
+    'imagecopy': [TK_IMPORT],
+    'imagecopy_self': [TK_IMPORT],
     'script_wui': ['crontab', 'lua'],
     # Note: package 'lunatic-python' provides module 'lua'
 
     'flickrripper': ['flickrapi'],
+    'imageharvest': ['BeautifulSoup'],
     'match_images': ['PIL.ImageTk'],
+    'panoramiopicker': ['BeautifulSoup'],
     'states_redirect': ['pycountry'],
-    'patrol': ['mwlib'],
-    'weblinkchecker.py': ['memento_client'],
+    'patrol': ['mwparserfromhell'],
 }
 
 if PYTHON_VERSION < (2, 7):
@@ -117,6 +125,7 @@ auto_run_script_list = [
     'patrol',
     'script_wui',
     'shell',
+    'standardize_interwiki',
     'states_redirect',
     'unusedfiles',
     'upload',
@@ -137,8 +146,10 @@ no_args_expected_results = {
     'imageuncat': 'WARNING: This script is primarily written for Wikimedia Commons',
     # script_input['interwiki'] above lists a title that should not exist
     'interwiki': 'does not exist. Skipping.',
+    'imageharvest': 'From what URL should I get the images',
     'login': 'Logged in on ',
     'pagefromfile': 'Please enter the file name',
+    'panoramiopicker': 'Panoramiopicker is a tool to transfer Panaramio ',
     'replace': 'Press Enter to use this automatic message',
     'script_wui': 'Pre-loading all relevant page contents',
     'shell': ('>>> ', 'Welcome to the'),

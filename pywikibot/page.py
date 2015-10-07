@@ -61,6 +61,7 @@ from pywikibot.tools import (
     PYTHON_VERSION, PY2,
     MediaWikiVersion, UnicodeMixin, ComparableMixin, DotReadableDict,
     deprecated, deprecate_arg, deprecated_args, issue_deprecation_warning,
+    ModuleDeprecationWrapper as _ModuleDeprecationWrapper,
     first_upper, remove_last_args, _NotImplementedWarning,
     OrderedDict, Counter,
 )
@@ -2306,8 +2307,7 @@ class FilePage(Page):
             self, step=step, total=total, content=content)
 
 
-import pywikibot.tools
-wrapper = pywikibot.tools.ModuleDeprecationWrapper(__name__)
+wrapper = _ModuleDeprecationWrapper(__name__)
 wrapper._add_deprecated_attr('ImagePage', FilePage)
 
 
@@ -4056,7 +4056,7 @@ class Claim(Property):
     """
     A Claim on a Wikibase entity.
 
-    Claims are standard claims as well as references.
+    Claims are standard claims as well as references and qualifiers.
     """
 
     TARGET_CONVERTER = {
@@ -4116,10 +4116,7 @@ class Claim(Property):
         if 'id' in data:
             claim.snak = data['id']
         elif 'hash' in data:
-            claim.isReference = True
             claim.hash = data['hash']
-        else:
-            claim.isQualifier = True
         claim.snaktype = data['mainsnak']['snaktype']
         if claim.getSnakType() == 'value':
             value = data['mainsnak']['datavalue']['value']
@@ -4161,6 +4158,7 @@ class Claim(Property):
             for claimsnak in data['snaks'][prop]:
                 claim = cls.fromJSON(site, {'mainsnak': claimsnak,
                                             'hash': data['hash']})
+                claim.isReference = True
                 if claim.getID() not in source:
                     source[claim.getID()] = []
                 source[claim.getID()].append(claim)
@@ -4177,8 +4175,10 @@ class Claim(Property):
 
         @return: Claim
         """
-        return cls.fromJSON(site, {'mainsnak': data,
-                                   'hash': data['hash']})
+        claim = cls.fromJSON(site, {'mainsnak': data,
+                                    'hash': data['hash']})
+        claim.isQualifier = True
+        return claim
 
     def toJSON(self):
         """
@@ -4829,7 +4829,7 @@ class Link(ComparableMixin):
             except SiteDefinitionError as e:
                 raise SiteDefinitionError(
                     u'{0} is not a local page on {1}, and the interwiki prefix '
-                    '{2} is not supported by PyWikiBot!:\n{3}'.format(
+                    '{2} is not supported by Pywikibot!:\n{3}'.format(
                         self._text, self._site, prefix, e))
             else:
                 t = t[t.index(u":"):].lstrip(u":").lstrip(u" ")

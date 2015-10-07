@@ -38,7 +38,7 @@ class TestProofreadPageInvalidSite(TestCase):
                           ProofreadPage, self.site, 'title')
 
 
-class TestBasePageMethods(BasePageMethodsTestBase):
+class TestBasePageMethodsProofreadPage(BasePageMethodsTestBase):
 
     """Test behavior of ProofreadPage methods inherited from BasePage."""
 
@@ -49,7 +49,7 @@ class TestBasePageMethods(BasePageMethodsTestBase):
         """Set up test case."""
         self._page = ProofreadPage(
             self.site, 'Page:Popular Science Monthly Volume 1.djvu/12')
-        super(TestBasePageMethods, self).setUp()
+        super(TestBasePageMethodsProofreadPage, self).setUp()
 
     def test_basepage_methods(self):
         """Test ProofreadPage methods inherited from superclass BasePage."""
@@ -57,7 +57,7 @@ class TestBasePageMethods(BasePageMethodsTestBase):
         self._test_return_datatypes()
 
 
-class TestLoadRevisionsCaching(BasePageLoadRevisionsCachingTestBase):
+class TestLoadRevisionsCachingProofreadPage(BasePageLoadRevisionsCachingTestBase):
 
     """Test site.loadrevisions() caching."""
 
@@ -68,7 +68,7 @@ class TestLoadRevisionsCaching(BasePageLoadRevisionsCachingTestBase):
         """Set up test case."""
         self._page = ProofreadPage(
             self.site, 'Page:Popular Science Monthly Volume 1.djvu/12')
-        super(TestLoadRevisionsCaching, self).setUp()
+        super(TestLoadRevisionsCachingProofreadPage, self).setUp()
 
     def test_page_text(self):
         """Test site.loadrevisions() with Page.text."""
@@ -270,6 +270,44 @@ class TestIndexPageValidSite(IndexPageTestCase):
         self.assertEqual(page.namespace(), source.namespace)
 
 
+class TestBasePageMethodsIndexPage(IndexPageTestCase, BasePageMethodsTestBase):
+
+    """Test behavior of ProofreadPage methods inherited from BasePage."""
+
+    family = 'wikisource'
+    code = 'en'
+
+    def setUp(self):
+        """Set up test case."""
+        self._page = IndexPage(
+            self.site, 'Index:Popular Science Monthly Volume 1.djvu')
+        super(TestBasePageMethodsIndexPage, self).setUp()
+
+    def test_basepage_methods(self):
+        """Test IndexPage methods inherited from superclass BasePage."""
+        self._test_invoke()
+        self._test_return_datatypes()
+
+
+class TestLoadRevisionsCachingIndexPage(IndexPageTestCase,
+                                        BasePageLoadRevisionsCachingTestBase):
+
+    """Test site.loadrevisions() caching."""
+
+    family = 'wikisource'
+    code = 'en'
+
+    def setUp(self):
+        """Set up test case."""
+        self._page = IndexPage(
+            self.site, 'Index:Popular Science Monthly Volume 1.djvu')
+        super(TestLoadRevisionsCachingIndexPage, self).setUp()
+
+    def test_page_text(self):
+        """Test site.loadrevisions() with Page.text."""
+        self._test_page_text()
+
+
 class TestIndexPageMappings(IndexPageTestCase):
 
     """Test IndexPage class."""
@@ -279,6 +317,7 @@ class TestIndexPageMappings(IndexPageTestCase):
             'family': 'wikisource',
             'code': 'en',
             'index': 'Popular Science Monthly Volume 1.djvu',
+            'num_pages': 804,
             'page': 'Popular Science Monthly Volume 1.djvu/{0}',
             'get_label': [11, 11, '1'],
             'get_number': [[1, set([11])],
@@ -290,6 +329,7 @@ class TestIndexPageMappings(IndexPageTestCase):
             'family': 'wikisource',
             'code': 'de',
             'index': 'Musen-Almanach für das Jahr 1799',
+            'num_pages': 272,
             'page': 'Schiller_Musenalmanach_1799_{0:3d}.jpg',
             'get_label': [120, 120, '120'],  # page no, title no, label
             'get_number': [[120, set([120])],
@@ -300,6 +340,7 @@ class TestIndexPageMappings(IndexPageTestCase):
             'family': 'wikisource',
             'code': 'fr',
             'index': 'Segard - Hymnes profanes, 1894.djvu',
+            'num_pages': 107,
             'page': 'Segard - Hymnes profanes, 1894.djvu/{0}',
             'get_label': [11, 11, '8'],
             'get_number': [[8, set([11])],
@@ -326,6 +367,11 @@ class TestIndexPageMappings(IndexPageTestCase):
                                for i in page_numbers)
                 site_def['get_page'].append([label, page_set])
 
+    def test_num_pages(self, key):
+        """Test num_pages property."""
+        index_page = IndexPage(self.site, self.sites[key]['index'])
+        self.assertEqual(index_page.num_pages, self.sites[key]['num_pages'])
+
     def test_get_labels(self, key):
         """Test IndexPage page get_label_from_* functions."""
         data = self.sites[key]
@@ -337,15 +383,15 @@ class TestIndexPageMappings(IndexPageTestCase):
 
         # Get label from number.
         self.assertEqual(index_page.get_label_from_page_number(num), label)
+        # Error if number does not exists.
         self.assertRaises(KeyError, index_page.get_label_from_page_number, -1)
 
         # Get label from page.
         self.assertEqual(index_page.get_label_from_page(proofread_page), label)
-
         # Error if page does not exists.
         self.assertRaises(KeyError, index_page.get_label_from_page, None)
 
-    def test_get_page_number(self, key):
+    def test_get_page_and_number(self, key):
         """Test IndexPage page get_page_number functions."""
         data = self.sites[key]
         index_page = IndexPage(self.site, self.sites[key]['index'])
@@ -380,27 +426,13 @@ class TestIndexPageMappings(IndexPageTestCase):
             n = index_page._numbers_from_page[p]
             self.assertEqual(index_page._page_from_numbers[n], p)
         for n in num_set:
-            n = index_page._page_from_numbers[p]
+            p = index_page._page_from_numbers[n]
             self.assertEqual(index_page._numbers_from_page[p], n)
 
-    def test_page_number_mapping(self, key):
-        """Test consistency of page <-> mapping."""
-        data = self.sites[key]
-        num, title_num, label = data['get_label']
-
-        index_page = IndexPage(self.site, self.sites[key]['index'])
-        page_title = self.sites[key]['page'].format(title_num)
-        proofread_page = ProofreadPage(self.site, page_title)
-
-        # Get label from number.
-        self.assertEqual(index_page.get_label_from_page_number(num), label)
-        # Error if number does not exists.
-        self.assertRaises(KeyError, index_page.get_label_from_page_number, -1)
-
-        # Get label from page.
-        self.assertEqual(index_page.get_label_from_page(proofread_page), label)
-        # Error if page does not exists.
-        self.assertRaises(KeyError, index_page.get_label_from_page, None)
+        # Test get_page_from_number.
+        for n in num_set:
+            p = index_page.get_page_from_number(n)
+            self.assertEqual(index_page._numbers_from_page[p], n)
 
 
 if __name__ == '__main__':

@@ -900,7 +900,8 @@ class BaseSite(ComparableMixin):
 
     def __repr__(self):
         """Return internal representation."""
-        return 'Site("%s", "%s")' % (self.code, self.family.name)
+        return '{0}("{1}", "{2}")'.format(
+            self.__class__.__name__, self.code, self.family)
 
     def __hash__(self):
         """Return hashable key."""
@@ -1729,6 +1730,15 @@ class TokenWallet(object):
     def __repr__(self):
         """Return a representation of the internal tokens dictionary."""
         return self._tokens.__repr__()
+
+
+class RemovedSite(BaseSite):
+
+    """Site removed from a family."""
+
+    def __init__(self, code, fam, user=None, sysop=None):
+        """Constructor."""
+        super(RemovedSite, self).__init__(code, fam, user, sysop)
 
 
 class NonMWAPISite(BaseSite):
@@ -2914,7 +2924,6 @@ class APISite(BaseSite):
         query = self._simple_request(
             action='query',
             prop='info',
-            inprop=['protection', 'talkid', 'subjectid'],
             titles=title,
             redirects=True)
         result = query.submit()
@@ -3530,7 +3539,7 @@ class APISite(BaseSite):
                     excluded_namespaces.add(14)
 
                 if namespaces:
-                    if excluded_namespaces.intersect(namespaces):
+                    if excluded_namespaces.intersection(namespaces):
                         raise ValueError(
                             'incompatible namespaces %r and member_type %r'
                             % (namespaces, member_type))
@@ -4493,7 +4502,7 @@ class APISite(BaseSite):
                                 step=step, total=total)
         if get_text:
             drgen.request['drprop'] = (drgen.request['drprop'] +
-                                       "|content|token")
+                                       ['content', 'token'])
         if start is not None:
             drgen.request["drstart"] = start
         if end is not None:
@@ -6451,10 +6460,6 @@ class DataSite(APISite):
                     f.__doc__ = method.__doc__
                 return f
         return super(APISite, self).__getattr__(attr)
-
-    def __repr__(self):
-        """Return internal representation."""
-        return 'DataSite("%s", "%s")' % (self.code, self.family.name)
 
     @deprecated("pywikibot.PropertyPage")
     def _get_propertyitem(self, props, source, **params):

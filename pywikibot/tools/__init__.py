@@ -38,6 +38,38 @@ else:
 
 from pywikibot.logging import debug
 
+
+if PYTHON_VERSION < (3, 5):
+    # although deprecated in 3 completely no message was emitted until 3.5
+    ArgSpec = inspect.ArgSpec
+    getargspec = inspect.getargspec
+else:
+    ArgSpec = collections.namedtuple('ArgSpec', ['args', 'varargs', 'keywords',
+                                                 'defaults'])
+
+    def getargspec(func):
+        """Python 3 implementation using inspect.signature."""
+        sig = inspect.signature(func)
+        args = []
+        defaults = []
+        varargs = None
+        kwargs = None
+        for p in sig.parameters.values():
+            if p.kind == inspect.Parameter.VAR_POSITIONAL:
+                varargs = p.name
+            elif p.kind == inspect.Parameter.VAR_KEYWORD:
+                kwargs = p.name
+            else:
+                args += [p.name]
+                if p.default != inspect.Parameter.empty:
+                    defaults += [p.default]
+        if defaults:
+            defaults = tuple(defaults)
+        else:
+            defaults = None
+        return ArgSpec(args, varargs, kwargs, defaults)
+
+
 _logger = 'tools'
 
 
@@ -390,7 +422,7 @@ class MediaWikiVersion(Version):
     """
 
     MEDIAWIKI_VERSION = re.compile(
-        r'^(\d+(?:\.\d+)+)(wmf(\d+)|alpha|beta(\d+)|-?rc\.?(\d+)|.*)?$')
+        r'^(\d+(?:\.\d+)+)(-?wmf\.?(\d+)|alpha|beta(\d+)|-?rc\.?(\d+)|.*)?$')
 
     @classmethod
     def from_generator(cls, generator):
@@ -418,10 +450,10 @@ class MediaWikiVersion(Version):
         elif version_match.group(2) == 'alpha':
             self._dev_version = (1, )
         else:
-            assert 'wmf' not in version_match.group(2)
-            assert 'alpha' not in version_match.group(2)
-            assert 'beta' not in version_match.group(2)
-            assert 'rc' not in version_match.group(2)
+            for handled in ('wmf', 'alpha', 'beta', 'rc'):
+                # if any of those pops up here our parser has failed
+                assert handled not in version_match.group(2), \
+                    'Found "{0}" in "{1}"'.format(handled, version_match.group(2))
             if version_match.group(2):
                 debug('Additional unused version part '
                       '"{0}"'.format(version_match.group(2)),
@@ -754,9 +786,12 @@ def filter_unique(iterable, container=None, key=None, add=None):
             add = container_setitem
 
     for item in iterable:
-        if (key(item) if key else item) not in container:
-            add(item)
-            yield item
+        try:
+            if (key(item) if key else item) not in container:
+                add(item)
+                yield item
+        except StopIteration:
+            return
 
 
 class CombinedError(KeyError, IndexError):
@@ -822,24 +857,27 @@ class SelfCallString(SelfCallMixin, str):
     """Unicode string with SelfCallMixin."""
 
 
-class DequeGenerator(collections.deque):
+class IteratorNextMixin(collections.Iterator):
+
+    """Backwards compatibility for Iterators."""
+
+    if PY2:
+
+        def next(self):
+            """Python 2 next."""
+            return self.__next__()
+
+
+class DequeGenerator(IteratorNextMixin, collections.deque):
 
     """A generator that allows items to be added during generating."""
 
-    def __iter__(self):
-        """Return the object which will be iterated."""
-        return self
-
-    def next(self):
+    def __next__(self):
         """Python 3 iterator method."""
         if len(self):
             return self.popleft()
         else:
             raise StopIteration
-
-    def __next__(self):
-        """Python 3 iterator method."""
-        return self.next()
 
 
 class ContextManagerWrapper(object):
@@ -1349,7 +1387,7 @@ def remove_last_args(arg_names):
             """
             name = obj.__full_name__
             depth = get_wrapper_depth(wrapper) + 1
-            args, varargs, kwargs, _ = inspect.getargspec(wrapper.__wrapped__)
+            args, varargs, kwargs, _ = getargspec(wrapper.__wrapped__)
             if varargs is not None and kwargs is not None:
                 raise ValueError('{0} may not have * or ** args.'.format(
                     name))
@@ -1467,6 +1505,8 @@ class ModuleDeprecationWrapper(types.ModuleType):
         @type replacement: any
         @param replacement_name: The name of the new replaced value. Required
             if C{replacement} is not None and it has no __name__ attribute.
+            If it contains a '.', it will be interpreted as a Python dotted
+            object name, and evaluated when the deprecated object is needed.
         @type replacement_name: str
         @param warning_message: The warning to display, with positional
             variables: {0} = module, {1} = attribute name, {2} = replacement.
@@ -1515,6 +1555,20 @@ class ModuleDeprecationWrapper(types.ModuleType):
                  DeprecationWarning, 2)
             if self._deprecated[attr][1]:
                 return self._deprecated[attr][1]
+            elif '.' in self._deprecated[attr][0]:
+                try:
+                    package_name = self._deprecated[attr][0].split('.', 1)[0]
+                    module = __import__(package_name)
+                    context = {package_name: module}
+                    replacement = eval(self._deprecated[attr][0], context)
+                    self._deprecated[attr] = (
+                        self._deprecated[attr][0],
+                        replacement,
+                        self._deprecated[attr][2]
+                    )
+                    return replacement
+                except Exception:
+                    pass
         return getattr(self._module, attr)
 
 

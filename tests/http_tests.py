@@ -1,7 +1,7 @@
 # -*- coding: utf-8  -*-
 """Tests for http module."""
 #
-# (C) Pywikibot team, 2014
+# (C) Pywikibot team, 2014-2015
 #
 # Distributed under the terms of the MIT license.
 #
@@ -9,7 +9,6 @@ from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
 
-import os
 import re
 import warnings
 
@@ -24,7 +23,7 @@ from pywikibot.tools import (
     UnicodeType as unicode,
 )
 
-from tests import _images_dir
+from tests import join_images_path
 from tests.aspects import unittest, TestCase, DeprecationTestCase
 
 
@@ -371,7 +370,7 @@ class BinaryTestCase(TestCase):
         """Set up test class."""
         super(BinaryTestCase, cls).setUpClass()
 
-        with open(os.path.join(_images_dir, 'MP_sounds.png'), 'rb') as f:
+        with open(join_images_path('MP_sounds.png'), 'rb') as f:
             cls.png = f.read()
 
     def test_requests(self):
@@ -389,6 +388,23 @@ class BinaryTestCase(TestCase):
         r = http.fetch(uri=self.url)
 
         self.assertEqual(r.raw, self.png)
+
+
+class TestDeprecatedGlobalCookieJar(DeprecationTestCase):
+
+    """Test usage of deprecated pywikibot.cookie_jar."""
+
+    net = False
+
+    def test_cookie_jar(self):
+        """Test pywikibot.cookie_jar is deprecated."""
+        # Accessing from the main package should be deprecated.
+        main_module_cookie_jar = pywikibot.cookie_jar
+
+        self.assertOneDeprecationParts('pywikibot.cookie_jar',
+                                       'pywikibot.comms.http.cookie_jar')
+
+        self.assertIs(main_module_cookie_jar, http.cookie_jar)
 
 
 if __name__ == '__main__':

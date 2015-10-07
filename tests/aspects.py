@@ -49,14 +49,14 @@ from pywikibot.data.api import Request as _original_Request
 from pywikibot.exceptions import ServerError, NoUsername
 from pywikibot.family import WikimediaFamily
 from pywikibot.site import BaseSite
-from pywikibot.tools import PY2
+from pywikibot.tools import PY2, StringTypes
 
 import tests
 
 from tests import unittest, patch_request, unpatch_request
 from tests.utils import (
     add_metaclass, execute_pwb, DrySite, DryRequest,
-    WarningSourceSkipContextManager,
+    WarningSourceSkipContextManager, AssertAPIErrorContextManager,
 )
 
 OSWIN32 = (sys.platform == 'win32')
@@ -105,6 +105,21 @@ class TestCaseBase(unittest.TestCase):
         print(' expected failure ', end='')
         sys.stdout.flush()
         result.addSuccess(self)
+
+    def assertMethod(self, method, *args):
+        """Generic method assertion."""
+        if not method(*args):
+            self.fail('{0!r} ({1!r}) fails'.format(method, args))
+
+    def assertStringMethod(self, method, *args):
+        """
+        Generic string method assertion.
+
+        All args must be already converted to a string.
+        """
+        for arg in args:
+            self.assertIsInstance(arg, StringTypes)
+        self.assertMethod(method, *args)
 
     def assertPageInNamespaces(self, page, namespaces):
         """
@@ -247,6 +262,33 @@ class TestCaseBase(unittest.TestCase):
         self.assertCountEqual(gen_titles, titles)
 
     assertPagelistTitles = assertPageTitlesEqual
+
+    def assertAPIError(self, code, info=None, callable_obj=None, *args,
+                       **kwargs):
+        """
+        Assert that a specific APIError wrapped around L{assertRaises}.
+
+        If no callable object is defined and it returns a context manager, that
+        context manager will return the underlying context manager used by
+        L{assertRaises}. So it's possible to access the APIError by using it's
+        C{exception} attribute.
+
+        @param code: The code of the error which must have happened.
+        @type code: str
+        @param info: The info string of the error or None if no it shouldn't be
+            checked.
+        @type info: str or None
+        @param callable_obj: The object that will be tested. If None it returns
+            a context manager like L{assertRaises}.
+        @type callable_obj: callable
+        @param args: The positional arguments forwarded to the callable object.
+        @param kwargs: The keyword arguments forwared to the callable object.
+        @return: The context manager if callable_obj is None and None otherwise.
+        @rtype: None or context manager
+        """
+        msg = kwargs.pop('msg', None)
+        return AssertAPIErrorContextManager(
+            code, info, msg, self).handle(callable_obj, args, kwargs)
 
 
 class TestTimerMixin(TestCaseBase):
@@ -808,6 +850,7 @@ class MetaTestCaseClass(type):
                 test_name = test + '_' + key.replace('-', '_')
 
                 dct[test_name] = wrap_method(key, sitedata, dct[test])
+                dct[test_name].__name__ = str(test_name)
 
                 if key in dct.get('expected_failures', []):
                     dct[test_name] = unittest.expectedFailure(dct[test_name])

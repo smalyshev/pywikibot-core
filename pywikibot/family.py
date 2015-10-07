@@ -1098,6 +1098,20 @@ class Family(object):
     def nice_get_address(self, code, title):
         return '%s%s' % (self.nicepath(code), title)
 
+    def interface(self, code):
+        """
+        Return interface to use for code.
+
+        @rtype: str or subclass of BaseSite
+        """
+        if code in self.interwiki_removals:
+            if code in self.codes:
+                pywikibot.warn('Interwiki removal %s is in %s codes'
+                               % (code, self))
+            return 'RemovedSite'
+
+        return config.site_interface
+
     # List of codes which aren't returned by from_url; True returns None always
     _ignore_from_url = []
 
@@ -1186,7 +1200,7 @@ class Family(object):
         Use L{pywikibot.tools.MediaWikiVersion} to compare version strings.
         """
         # Here we return the latest mw release for downloading
-        return '1.25.1'
+        return '1.25.2'
 
     def force_version(self, code):
         """
@@ -1557,8 +1571,16 @@ class AutoFamily(SingleSiteFamily):
 
     """Family that automatically loads the site configuration."""
 
+    @deprecated_args(site=None)
     def __init__(self, name, url):
-        """Constructor."""
+        """
+        Constructor.
+
+        @param name: Name for the family
+        @type name: str
+        @param url: API endpoint URL of the wiki
+        @type url: str
+        """
         self.name = name
         self.url = urlparse.urlparse(url)
         self.domain = self.url.netloc

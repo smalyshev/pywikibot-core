@@ -29,7 +29,9 @@ from warnings import warn
 
 import pywikibot
 from pywikibot import config, login
-from pywikibot.tools import MediaWikiVersion, deprecated, itergroup, ip, PY2
+from pywikibot.tools import (
+    MediaWikiVersion, deprecated, itergroup, ip, PY2, getargspec,
+)
 from pywikibot.tools.formatter import color_format
 from pywikibot.exceptions import (
     Server504Error, Server414Error, FatalServerError, NoUsername, Error
@@ -1035,6 +1037,7 @@ class ParamInfo(Container):
                     if self[mod][attribute])
 
     @property
+    @deprecated('parameter()')
     def query_modules_with_limits(self):
         """Set of all query modules which have limits."""
         if not self._with_limits:
@@ -1298,24 +1301,24 @@ class Request(MutableMapping):
     >>> # add a new parameter
     >>> r['siprop'] = "namespaces"
     >>> # note that "uiprop" param gets added automatically
-    >>> r.action  # doctest: +IGNORE_UNICODE
-    u'query'
-    >>> sorted(r._params.keys())  # doctest: +IGNORE_UNICODE
-    [u'action', u'meta', u'siprop']
-    >>> r._params['action']  # doctest: +IGNORE_UNICODE
-    [u'query']
-    >>> r._params['meta']  # doctest: +IGNORE_UNICODE
-    [u'userinfo', u'siteinfo']
-    >>> r._params['siprop']  # doctest: +IGNORE_UNICODE
-    [u'namespaces']
-    >>> data = r.submit()  # doctest: +IGNORE_UNICODE
+    >>> str(r.action)
+    'query'
+    >>> sorted(str(key) for key in r._params.keys())
+    ['action', 'meta', 'siprop']
+    >>> [str(key) for key in r._params['action']]
+    ['query']
+    >>> [str(key) for key in r._params['meta']]
+    ['userinfo', 'siteinfo']
+    >>> [str(key) for key in r._params['siprop']]
+    ['namespaces']
+    >>> data = r.submit()
     >>> isinstance(data, dict)
     True
     >>> set(['query', 'batchcomplete', 'warnings']).issuperset(data.keys())
     True
     >>> 'query' in data
     True
-    >>> sorted(data[u'query'].keys())  # doctest: +IGNORE_UNICODE
+    >>> sorted(str(key) for key in data[u'query'].keys())
     ['namespaces', 'userinfo']
 
     """
@@ -1514,7 +1517,7 @@ class Request(MutableMapping):
         for super_cls in inspect.getmro(cls):
             if not super_cls.__name__.endswith('Request'):
                 break
-            args |= set(inspect.getargspec(super_cls.__init__)[0])
+            args |= set(getargspec(super_cls.__init__)[0])
         else:
             raise ValueError('Request was not a super class of '
                              '{0!r}'.format(cls))
@@ -1673,11 +1676,6 @@ class Request(MutableMapping):
             uiprop = self._params.get("uiprop", [])
             uiprop = set(uiprop + ["blockinfo", "hasmsg"])
             self._params["uiprop"] = list(sorted(uiprop))
-            if "properties" in self._params:
-                if "info" in self._params["properties"]:
-                    inprop = self._params.get("inprop", [])
-                    info = set(inprop + ["protection", "talkid", "subjectid"])
-                    self._params["info"] = list(info)
             if 'prop' in self._params:
                 if self.site.has_extension('ProofreadPage'):
                     prop = set(self._params['prop'] + ['proofread'])
@@ -2503,10 +2501,11 @@ class QueryGenerator(_RequestWrapper):
             parameters['continue'] = True
         self.request = self.request_class(**kwargs)
 
-        # This forces all paraminfo for all query modules to be bulk loaded.
-        limited_modules = (
-            set(self.modules) & self.site._paraminfo.query_modules_with_limits
-        )
+        self.site._paraminfo.fetch('query+' + mod for mod in self.modules)
+
+        limited_modules = set(
+            mod for mod in self.modules
+            if self.site._paraminfo.parameter('query+' + mod, 'limit'))
 
         if not limited_modules:
             self.limited_module = None
@@ -2517,7 +2516,7 @@ class QueryGenerator(_RequestWrapper):
             # Query will continue as needed until limit (if any) for this module
             # is reached.
             for module in self.modules:
-                if module in self.site._paraminfo.query_modules_with_limits:
+                if module in limited_modules:
                     self.limited_module = module
                     limited_modules.remove(module)
                     break
@@ -3019,7 +3018,7 @@ class LoginManager(login.LoginManager):
 
     def storecookiedata(self, data):
         """Ignore data; cookies are set by threadedhttp module."""
-        pywikibot.cookie_jar.save()
+        http.cookie_jar.save()
 
 
 def update_page(page, pagedict, props=[]):

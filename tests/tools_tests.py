@@ -11,17 +11,17 @@ __version__ = '$Id$'
 
 import collections
 import decimal
+import inspect
 import os.path
 import subprocess
 import tempfile
+import warnings
 
 from pywikibot import tools
 
-from tests import _data_dir
-from tests.aspects import unittest, DeprecationTestCase, TestCase
-from tests.utils import expected_failure_if
-
-_xml_data_dir = os.path.join(_data_dir, 'xml')
+from tests import join_xml_data_path
+from tests.aspects import unittest, DeprecationTestCase, TestCase, MetaTestCaseClass
+from tests.utils import expected_failure_if, add_metaclass
 
 
 class ContextManagerWrapperTestCase(TestCase):
@@ -87,7 +87,7 @@ class OpenArchiveTestCase(TestCase):
     def setUpClass(cls):
         """Define base_file and original_content."""
         super(OpenArchiveTestCase, cls).setUpClass()
-        cls.base_file = os.path.join(_xml_data_dir, 'article-pyrus.xml')
+        cls.base_file = join_xml_data_path('article-pyrus.xml')
         with open(cls.base_file, 'rb') as f:
             cls.original_content = f.read()
 
@@ -150,7 +150,7 @@ class OpenArchiveWriteTestCase(TestCase):
     def setUpClass(cls):
         """Define base_file and original_content."""
         super(OpenArchiveWriteTestCase, cls).setUpClass()
-        cls.base_file = os.path.join(_xml_data_dir, 'article-pyrus.xml')
+        cls.base_file = join_xml_data_path('article-pyrus.xml')
         with open(cls.base_file, 'rb') as f:
             cls.original_content = f.read()
 
@@ -487,6 +487,82 @@ class TestFilterUnique(TestCase):
 
         # And it should not resume
         self.assertRaises(StopIteration, next, deduper)
+
+
+class MetaTestArgSpec(MetaTestCaseClass):
+
+    """Metaclass to create dynamically the tests. Set the net flag to false."""
+
+    def __new__(cls, name, bases, dct):
+        """Create a new test case class."""
+        def create_test(method):
+            def test_method(self):
+                # all expect at least self and param
+                expected = method(1, 2)
+                returned = self.getargspec(method)
+                self.assertEqual(returned, expected)
+                self.assertIsInstance(returned, self.expected_class)
+                self.assertNoDeprecation()
+            return test_method
+
+        for name, tested_method in list(dct.items()):
+            if name.startswith('_method_test_'):
+                suffix = name[len('_method_test_'):]
+                test_name = 'test_method_' + suffix
+                dct[test_name] = create_test(tested_method)
+                dct[test_name].__doc__ = 'Test getargspec on {0}'.format(suffix)
+
+        dct['net'] = False
+        return super(MetaTestArgSpec, cls).__new__(cls, name, bases, dct)
+
+
+@add_metaclass
+class TestArgSpec(DeprecationTestCase):
+
+    """Test getargspec and ArgSpec from tools."""
+
+    __metaclass__ = MetaTestArgSpec
+
+    expected_class = tools.ArgSpec
+
+    def _method_test_args(self, param):
+        """Test method with two positional arguments."""
+        return (['self', 'param'], None, None, None)
+
+    def _method_test_kwargs(self, param=42):
+        """Test method with one positional and one keyword argument."""
+        return (['self', 'param'], None, None, (42,))
+
+    def _method_test_varargs(self, param, *var):
+        """Test method with two positional arguments and var args."""
+        return (['self', 'param'], 'var', None, None)
+
+    def _method_test_varkwargs(self, param, **var):
+        """Test method with two positional arguments and var kwargs."""
+        return (['self', 'param'], None, 'var', None)
+
+    def _method_test_vars(self, param, *args, **kwargs):
+        """Test method with two positional arguments and both var args."""
+        return (['self', 'param'], 'args', 'kwargs', None)
+
+    def getargspec(self, method):
+        """Call tested getargspec function."""
+        return tools.getargspec(method)
+
+
+@unittest.skipIf(tools.PYTHON_VERSION >= (3, 6), 'removed in Python 3.6')
+class TestPythonArgSpec(TestArgSpec):
+
+    """Test the same tests using Python's implementation."""
+
+    expected_class = inspect.ArgSpec
+
+    def getargspec(self, method):
+        """Call inspect's getargspec function."""
+        with warnings.catch_warnings():
+            if tools.PYTHON_VERSION >= (3, 5):
+                warnings.simplefilter('ignore', DeprecationWarning)
+            return inspect.getargspec(method)
 
 
 if __name__ == '__main__':

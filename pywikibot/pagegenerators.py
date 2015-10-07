@@ -42,12 +42,12 @@ from pywikibot.tools import (
     issue_deprecation_warning,
     DequeGenerator,
     intersect_generators,
+    IteratorNextMixin,
     filter_unique,
 )
 
-from pywikibot import date, config, i18n
+from pywikibot import date, config, i18n, xmlreader
 from pywikibot.comms import http
-from pywikibot.data import wikidataquery as wdquery
 from pywikibot.exceptions import ArgumentDeprecationWarning
 
 if sys.version_info[0] > 2:
@@ -1686,7 +1686,7 @@ def DequePreloadingGenerator(generator, step=50):
     while True:
         page_count = min(len(generator), step)
         if not page_count:
-            raise StopIteration
+            return
 
         for page in PreloadingGenerator(generator, page_count):
             yield page
@@ -2332,6 +2332,62 @@ def MySQLPageGenerator(query, site=None):
             yield page
 
 
+class XMLDumpOldPageGenerator(IteratorNextMixin):
+
+    """Xml generator that yields Page objects with old text loaded."""
+
+    @deprecated_args(xmlFilename='filename', xmlStart='start')
+    def __init__(self, filename, start=None, namespaces=[], site=None,
+                 text_predicate=None):
+        """Constructor."""
+        # xmlFilename and xmlStart mapped to not break git blame
+        # use filename and start on new/changed lines
+        xmlFilename = filename
+        xmlStart = start
+
+        if text_predicate is None:
+            text_predicate = lambda text: True
+        self.text_predicate = text_predicate
+
+        self.xmlStart = xmlStart
+        self.namespaces = namespaces
+        self.skipping = bool(xmlStart)
+        self.site = site or pywikibot.Site()
+
+        dump = xmlreader.XmlDump(xmlFilename)
+        self.parser = dump.parse()
+
+    def __next__(self):
+        """Get next Page."""
+        while True:
+            try:
+                entry = next(self.parser)
+            except StopIteration:
+                raise
+            if self.skipping:
+                if entry.title != self.xmlStart:
+                    continue
+                self.skipping = False
+            page = pywikibot.Page(self.site, entry.title)
+            if not self.namespaces == []:
+                if page.namespace() not in self.namespaces:
+                    continue
+            if self.text_predicate(entry.text):
+                page.text = entry.text
+                return page
+
+
+class XMLDumpPageGenerator(XMLDumpOldPageGenerator):
+
+    """Xml generator that yields Page objects without text loaded."""
+
+    def __next__(self):
+        """Get next Page from dump and remove the text."""
+        page = super(XMLDumpPageGenerator, self).__next__()
+        del page.text
+        return page
+
+
 def YearPageGenerator(start=1, end=2050, site=None):
     """
     Year page generator.
@@ -2378,6 +2434,8 @@ def WikidataQueryPageGenerator(query, site=None):
     @type site: L{pywikibot.site.BaseSite}
 
     """
+    from pywikibot.data import wikidataquery as wdquery
+
     if site is None:
         site = pywikibot.Site()
     repo = site.data_repository()
