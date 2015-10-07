@@ -152,6 +152,7 @@ for prop in props:
     baditems = load_page(logpage)
     if len(baditems) > 30:
         print "Too many bad items for %s, skipping" % prop
+        continue
     if TEST:
         items = [u"Q826"]
     else:
