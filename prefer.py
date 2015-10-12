@@ -40,12 +40,18 @@ PREFIX wdt: <http://www.wikidata.org/prop/direct/>
 prefix wd: <http://www.wikidata.org/entity/>
 SELECT DISTINCT ?s WHERE {
   ?s p:%s ?st .
+# One claim with start time
   ?st q:P580 ?t .
+# and no end time
   OPTIONAL { ?st q:P582 ?t2 }
-  ?st wikibase:rank wikibase:NormalRank.
   FILTER(!bound(?t2))
+  ?st wikibase:rank wikibase:NormalRank.
+# Another claim
   ?s p:%s ?st2 .
   FILTER(?st2 != ?st)
+# with an end time
+  ?st2 q:P582 ?t3 .
+# and it's not a dead person
   OPTIONAL { ?s wdt:P570 ?d }
   FILTER(!bound(?d))
   ?st2 wikibase:rank wikibase:NormalRank.
@@ -140,10 +146,27 @@ P488: chairperson
 P551: residence
 P579: IMA status and/or rank
 P598: commander of
+P605: NUTS code
+P625: coordinate location
+P708: diocese
+P749: parent company
+P879: pennant number
+P964: Austrian municipality key
+P1037: manager/director
+P1075: rector
+P1308: officeholder
+P1435: heritage status
+P1448: official name
+P1454: legal form
+P1476: title
+P1705: native label
+P1813: short name
 """
 if not TEST:
     props = [ 'P26', 'P6', 'P17', 'P35', 'P36', 'P94', 'P115', 'P118', 'P123', 'P138', 'P154', 'P159', 'P169', 'P176', 'P195',
-             'P286', 'P289', 'P449', 'P484', 'P488', 'P551', 'P579', 'P598', 
+             'P286', 'P289', 'P449', 'P484', 'P488', 'P551', 'P579', 'P598', 'P605', 'P625',
+             'P708', 'P749', 'P879', 'P964', 'P1037','P1075', 'P1308', 'P1435', 'P1448', 'P1454',
+             'P1476', 'P1705', 'P1813',
     ]
 
 for prop in props:
