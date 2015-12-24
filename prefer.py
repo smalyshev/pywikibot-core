@@ -39,7 +39,8 @@ PREFIX wikibase: <http://wikiba.se/ontology#>
 PREFIX wdt: <http://www.wikidata.org/prop/direct/>
 prefix wd: <http://www.wikidata.org/entity/>
 SELECT DISTINCT ?s WHERE {
-  ?s p:%s ?st .
+  BIND (p:%s as ?prop)
+  ?s ?prop ?st .
 # One claim with start time
   ?st q:P580 ?t .
 # and no end time
@@ -47,7 +48,7 @@ SELECT DISTINCT ?s WHERE {
   FILTER(!bound(?t2))
   ?st wikibase:rank wikibase:NormalRank.
 # Another claim
-  ?s p:%s ?st2 .
+  ?s ?prop ?st2 .
   FILTER(?st2 != ?st)
 # with an end time
   ?st2 q:P582 ?t3 .
@@ -62,11 +63,11 @@ SELECT DISTINCT ?s WHERE {
 # and no end date, more than one statement on the same property
 # and not date of death for this item
     if len(bad_ids) > 0:
-        id_filter = "FILTER NOT EXISTS { VALUES ?s { %s } }" % ' '.join(["wd:"+q for q in bad_ids if q ])
+        id_filter = "MINUS { VALUES ?s { %s } }" % ' '.join(["wd:"+q for q in bad_ids if q ])
     else:
         id_filter = ''
 
-    dquery = SPARQL + urllib.quote(QUERY % (prop, prop, id_filter))
+    dquery = SPARQL + urllib.quote(QUERY % (prop, id_filter))
 
     print dquery
 
@@ -114,13 +115,13 @@ wd:Q2948
 wd:Q3936
 """
 """
-Not running because of timeouts:
-"""
-"""
 Too many bad entries:
 P54: member of the sports team
 P102: member of political party
 P131: located in the administrative territorial entity
+P195: collection
+P551
+P579: IMA status and/or rank
 """
 """
 P6: head of government
@@ -137,7 +138,6 @@ P154: logo image
 P159: headquarters location
 P169: chief executive officer
 P176: manufacturer
-P195: collection
 P286: head coach
 P289: vessel class
 P449: original network
@@ -161,12 +161,14 @@ P1454: legal form
 P1476: title
 P1705: native label
 P1813: short name
+P1998: UCI code
 """
 if not TEST:
-    props = [ 'P26', 'P6', 'P17', 'P35', 'P36', 'P94', 'P115', 'P118', 'P123', 'P138', 'P154', 'P159', 'P169', 'P176', 'P195',
-             'P286', 'P289', 'P449', 'P484', 'P488', 'P551', 'P579', 'P598', 'P605', 'P625',
+    props = [
+             'P26', 'P6', 'P17', 'P35', 'P36', 'P94', 'P115', 'P118', 'P123', 'P138', 'P154', 'P159', 'P169', 'P176',
+             'P286', 'P289', 'P449', 'P484', 'P488', 'P551', 'P598', 'P605', 'P625',
              'P708', 'P749', 'P879', 'P964', 'P1037','P1075', 'P1308', 'P1435', 'P1448', 'P1454',
-             'P1476', 'P1705', 'P1813',
+             'P1476', 'P1705', 'P1813', 'P1998'
     ]
 
 for prop in props:
