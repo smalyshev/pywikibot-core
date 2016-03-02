@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import pywikibot
+from pywikibot.data.sparql import SparqlQuery
 import requests
 import datetime
 import re
@@ -33,11 +34,7 @@ qregex = re.compile('{{Q|(Q\d+)}}')
 repo = site.data_repository()
 
 START_END_QUERY = """
-PREFIX p: <http://www.wikidata.org/prop/>
 PREFIX q: <http://www.wikidata.org/prop/qualifier/>
-PREFIX wikibase: <http://wikiba.se/ontology#>
-PREFIX wdt: <http://www.wikidata.org/prop/direct/>
-prefix wd: <http://www.wikidata.org/entity/>
 SELECT DISTINCT ?s WHERE {
   BIND (p:%s as ?prop)
   ?s ?prop ?st .
@@ -63,11 +60,7 @@ SELECT DISTINCT ?s WHERE {
 """
 
 POINT_QUERY = """
-PREFIX p: <http://www.wikidata.org/prop/>
 PREFIX q: <http://www.wikidata.org/prop/qualifier/>
-PREFIX wikibase: <http://wikiba.se/ontology#>
-PREFIX wdt: <http://www.wikidata.org/prop/direct/>
-prefix wd: <http://www.wikidata.org/entity/>
 SELECT DISTINCT ?s WHERE {
   BIND (p:%s as ?prop)
   ?s ?prop ?st .
@@ -90,9 +83,9 @@ SELECT DISTINCT ?s WHERE {
 } LIMIT 10
 """
 
-def get_items(query, prop, bad_ids=[]):
-    SPARQL = "http://query.wikidata.org/bigdata/namespace/wdq/sparql"
+sparql_query = SparqlQuery()
 
+def get_items(query, prop, bad_ids=[]):
 # Query asks for items with normal-ranked statement with start date
 # and no end date, more than one statement on the same property
 # and not date of death for this item
@@ -102,23 +95,9 @@ def get_items(query, prop, bad_ids=[]):
         id_filter = ''
 
     dquery = query % (prop, id_filter)
-    print(dquery)
+#    print(dquery)
 
-    resp = requests.get(SPARQL,
-        params={ 'query': dquery },
-        headers={ 'cache-control':'no-cache',
-                                     'Accept': 'application/sparql-results+json'
-                            })
-    if resp.status_code != 200 or not resp.text:
-        print("Query on %s failed" % prop)
-        print(resp)
-        return []
-    data = resp.json()
-    items = []
-    if 'results' in data:
-        for r in data['results']['bindings']:
-            items.append(r['s']['value'][31:])
-    return items
+    return sparql_query.get_items(dquery, item_name="s")
 
 def load_page(page):
     page.modifiedByBot = False
