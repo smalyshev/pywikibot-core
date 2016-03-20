@@ -71,4 +71,4 @@ for itemID in items:
             wb['globe'] = body_id
             newCoord = pywikibot.Coordinate.fromWikibase(wb, site)
             print("Changed globe for coordinate on %s to %s" % (itemID, body_id))
-            #coord.changeTarget(newCoord)
+            coord.changeTarget(newCoord)
