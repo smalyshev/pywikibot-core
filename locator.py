@@ -1,5 +1,6 @@
 import pywikibot
 from pywikibot.data.sparql import SparqlQuery
+from pywikibot.exceptions import CoordinateGlobeUnknownException
 
 TEST = False
 
@@ -67,8 +68,13 @@ for itemID in items:
         coordValue = coord.getTarget()
         if coordValue.entity != body_id:
             # got mislabeled coordinate
-            wb = coordValue.toWikibase()
+            print("Changing globe for coordinate on %s to %s" % (itemID, body_id))
+            try:
+                wb = coordValue.toWikibase()
+            except CoordinateGlobeUnknownException:
+                # does not matter, since we're going to replace it anyway
+                coordValue.globe = 'earth'
+                wb = coordValue.toWikibase()
             wb['globe'] = body_id
             newCoord = pywikibot.Coordinate.fromWikibase(wb, site)
-            print("Changed globe for coordinate on %s to %s" % (itemID, body_id))
             coord.changeTarget(newCoord)
