@@ -20,7 +20,7 @@ WHERE {
 ?item wdt:P376 ?body .
 ?item p:P625/psv:P625/wikibase:geoGlobe ?globe .
 filter (?globe != ?body) .
-} LIMIT 10
+} LIMIT 30
 """
 
 sparql_query = SparqlQuery()
@@ -41,6 +41,7 @@ for itemID in items:
     item.get()
 
     if LOCATION not in item.claims:
+        log_item(itemID, "Location gone?")
         continue
 
     if BODY not in item.claims:
@@ -64,6 +65,7 @@ for itemID in items:
 
     for coord in item.claims[LOCATION]:
         if coord.getSnakType() != 'value':
+            log_item(itemID, "Location not a value")
             continue
         coordValue = coord.getTarget()
         if coordValue.entity != body_id:
