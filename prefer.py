@@ -140,6 +140,7 @@ P17: country
 P26: spouse
 P35: head of state
 P36: capital
+P41: flag image
 P94: coat of arms image
 P115: home venue
 P118: league
