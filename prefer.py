@@ -130,8 +130,9 @@ Too many bad entries:
 P54: member of the sports team
 P102: member of political party
 P131: located in the administrative territorial entity
+?P286: head coach?
 P195: collection
-P551
+P551: residence
 P579: IMA status and/or rank
 """
 """
@@ -155,7 +156,6 @@ P289: vessel class
 P449: original network
 P484: IMA Number, broad sense
 P488: chairperson
-P551: residence
 P579: IMA status and/or rank
 P598: commander of
 P605: NUTS code
@@ -184,9 +184,8 @@ P1082: population
 if not TEST:
     start_end_props = [
              'P41', 'P26', 'P6', 'P17', 'P35', 'P36', 'P94', 'P115', 'P118', 'P123', 'P138', 'P154', 'P159', 'P169', 'P176',
-             'P286', 'P289', 'P449', 'P484', 'P488', 'P551', 'P598', 'P605', 'P625',
-             'P708', 'P749', 'P879', 'P964', 'P1037','P1075', 'P1308', 'P1435', 'P1448', 'P1454',
-             'P1476', 'P1705', 'P1813', 'P1998'
+             'P289', 'P449', 'P484', 'P488', 'P598', 'P605', 'P625', 'P708', 'P749', 'P879', 'P964', 'P1037','P1075', 'P1308', 
+             'P1435', 'P1448', 'P1454', 'P1476', 'P1705', 'P1813', 'P1998'
     ]
     point_props = [
                    'P348', 'P1082'
