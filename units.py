@@ -57,7 +57,11 @@ def found_inconsistent(prop, result):
 # Check property units
 for item in items:
     query = CHECKUNITS % (item, item)
-    result = sparql_query.select(query)
+    try:
+        result = sparql_query.select(query)
+    except:
+        print("Failed to query %s!" % item)
+        continue
     if len(result) <= 1:
         continue
     for unit in result:
