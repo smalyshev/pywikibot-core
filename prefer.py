@@ -156,6 +156,7 @@ P289: vessel class
 P449: original network
 P484: IMA Number, broad sense
 P488: chairperson
+P505: general manager
 P579: IMA status and/or rank
 P598: commander of
 P605: NUTS code
@@ -164,6 +165,7 @@ P708: diocese
 P749: parent company
 P879: pennant number
 P964: Austrian municipality key
+P969: located at street address
 P1037: manager/director
 P1075: rector
 P1308: officeholder
@@ -180,6 +182,8 @@ P2978: wheel arrangement
 point in time:
 P348: software version
 P1082: population
+P1114: quantity
+P1352: ranking
 P1538: number of households
 P1539: female population
 P1540: male population
@@ -188,12 +192,12 @@ P2046: area
 
 if not TEST:
     start_end_props = [
-             'P41', 'P26', 'P6', 'P17', 'P35', 'P36', 'P94', 'P115', 'P118', 'P123', 'P138', 'P154', 'P159', 'P169', 'P176',
-             'P289', 'P449', 'P484', 'P488', 'P598', 'P605', 'P625', 'P708', 'P749', 'P879', 'P964', 'P1037','P1075', 'P1308',
-             'P1435', 'P1448', 'P1454', 'P1476', 'P1705', 'P1813', 'P1998', 'P2978'
+              'P41', 'P26', 'P6', 'P17', 'P35', 'P36', 'P94', 'P115', 'P118', 'P123', 'P138', 'P154', 'P159', 'P169', 'P176',
+              'P289', 'P449', 'P484', 'P488', 'P505', 'P598', 'P605', 'P625', 'P708', 'P749', 'P879', 'P964', 'P969', 'P1037',
+              'P1075', 'P1308', 'P1435', 'P1448', 'P1454', 'P1476', 'P1705', 'P1813', 'P1998', 'P2978'
     ]
     point_props = [
-                   'P348', 'P1082', 'P1538', 'P1539', 'P1540', 'P2046', 'P1833', 'P2124'
+              'P348', 'P1082', 'P1114', 'P1352', 'P1538', 'P1539', 'P1540', 'P2046', 'P1833', 'P2124'
     ]
 
 # Check if this item is ok to process
