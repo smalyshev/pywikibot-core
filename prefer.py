@@ -64,9 +64,9 @@ PREFIX q: <http://www.wikidata.org/prop/qualifier/>
 SELECT DISTINCT ?s WHERE {
   BIND (p:%s as ?prop)
   ?s ?prop ?st .
-# One claim with start time
+# One claim with point-in-time
   ?st q:P585 ?t .
-# and no end time
+# Normal rank
   ?st wikibase:rank wikibase:NormalRank.
   ?st a wikibase:BestRank .
 # Another claim
