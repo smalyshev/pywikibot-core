@@ -16,7 +16,7 @@ ORDER BY DESC(?count)
 GETUNITS = """
 SELECT ?id WHERE {
     ?id p:%s/psv:%s [ wikibase:quantityUnit wd:%s ]
-    FILTER(?id != wd:Q13406268 && ?id != wd:Q15397819)
+    FILTER(?id != wd:Q4115189 && ?id != wd:Q13406268 && ?id != wd:Q15397819)
 }
 """
 SPARQL = """
@@ -32,7 +32,7 @@ repo = site.data_repository()
 badprops = []
 items = sparql_query.get_items(QUANT, item_name='p')
 
-sandboxes = set(['Q13406268', 'Q15397819'])
+sandboxes = set(['Q13406268', 'Q15397819', 'Q4115189'])
 
 # report inconsistent properties
 def found_inconsistent(prop, result):
