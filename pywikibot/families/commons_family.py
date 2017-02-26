@@ -1,5 +1,10 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Family module for Wikimedia Commons."""
+#
+# (C) Pywikibot team, 2005-2015
+#
+# Distributed under the terms of the MIT license.
+#
 from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
@@ -38,10 +43,6 @@ class Family(family.WikimediaOrgFamily):
                 u'Invalid taxon category redirect',
                 u'Monotypic taxon category redirect',
             ),
-        }
-
-        self.disambcatname = {
-            'commons': 'Disambiguation'
         }
 
         # Subpages for documentation.

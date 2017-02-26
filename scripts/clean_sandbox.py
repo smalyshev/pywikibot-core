@@ -29,9 +29,9 @@ Furthermore, the following command line parameters are supported:
 # (C) Wikipedian, 2006-2007
 # (C) Andre Engels, 2007
 # (C) Siebrand Mazeland, 2007
-# (C) xqt, 2009-2014
+# (C) xqt, 2009-2017
 # (C) Dr. Trigon, 2012
-# (C) Pywikibot team, 2012-2014
+# (C) Pywikibot team, 2012-2017
 #
 # Distributed under the terms of the MIT license.
 #
@@ -48,6 +48,7 @@ from pywikibot import i18n, Bot, pagegenerators
 
 content = {
     'commons': u'{{Sandbox}}\n<!-- Please edit only below this line. -->',
+    'wikidata': '{{Please leave this line alone (sandbox heading)}}',
     'als': u'{{subst:/Vorlage}}',
     'ar': u'{{عنوان الملعب}}\n<!-- مرحبا! خذ راحتك في تجربة مهارتك في التنسيق '
           u'والتحرير أسفل هذا السطر. هذه الصفحة لتجارب التعديل ، سيتم تفريغ '
@@ -57,7 +58,7 @@ content = {
            u'حيتم تنضيفها\nاوتوماتيكيا كل 12 ساعه. -->',
     'az': u'<!--- LÜTFƏN, BU SƏTRƏ TOXUNMAYIN --->\n{{Qaralama dəftəri}}\n'
           u'<!-- AŞAĞIDAKI XƏTTİN ALTINDAN YAZA BİLƏRSİNİZ --->',
-    'bar': u'{{Bitte erst NACH dieser Zeile schreiben! (Begrüßungskasten)}}\r\n',
+    'bar': '{{Bitte erst NACH dieser Zeile schreiben! (Begrüßungskasten)}}\n',
     'cs': u'{{subst:/uhrabat}}',
     'da': u'{{subst:Sandkasse tekst}}',
     'de': u'{{subst:Wikipedia:Spielwiese/Vorlage}}',
@@ -70,7 +71,8 @@ content = {
     'fi': u'{{subst:Hiekka}}',
     'he': u'{{ארגז חול}}\n<!-- נא לערוך מתחת לשורה זו בלבד, תודה. -->',
     'id': u'{{Bakpasir}}\n<!-- Uji coba dilakukan di baris di bawah ini -->',
-    'it': u'{{sandbox}}<!-- Scrivi SOTTO questa riga senza cancellarla. Grazie. -->',
+    'it': '{{sandbox}}'
+          '<!-- Scrivi SOTTO questa riga senza cancellarla. Grazie. -->',
     'ja': u'{{subst:サンドボックス}}',
     'ko': u'{{연습장 안내문}}',
     'ksh': u'{{subst:/Schablon}}',
@@ -86,9 +88,12 @@ content = {
     'no': u'{{Sandkasse}}\n<!-- VENNLIGST EKSPERIMENTER NEDENFOR DENNE '
           u'SKJULTE TEKSTLINJEN! SANDKASSEMALEN {{Sandkasse}} SKAL IKKE '
           u'FJERNES! -->}}',
-    'pl': u'{{Prosimy - NIE ZMIENIAJ, NIE KASUJ, NIE PRZENOŚ tej linijki - pisz niżej}}',
-    'pt': u'<!--não apague esta linha-->{{página de testes}}<!--não apagar-->\r\n',
-    'ru': u'{{/Пишите ниже}}\n<!-- Не удаляйте, пожалуйста, эту строку, тестируйте ниже -->',
+    'pl': '{{Prosimy - NIE ZMIENIAJ, NIE KASUJ, NIE PRZENOŚ tej linijki '
+          '- pisz niżej}}',
+    'pt': '<!--não apague esta linha-->'
+          '{{página de testes}}<!--não apagar-->\n',
+    'ru': '{{/Пишите ниже}}\n'
+          '<!-- Не удаляйте, пожалуйста, эту строку, тестируйте ниже -->',
     'simple': u'{{subst:/Text}}',
     'sco': u'{{subst:Saundbox}}',
     'sr': u'{{песак}}\n<!-- Молимо, испробавајте испод ове линије. Хвала. -->',
@@ -96,11 +101,12 @@ content = {
     'th': u'{{กระบะทราย}}\n<!-- กรุณาอย่าแก้ไขบรรทัดนี้ ขอบคุณครับ/ค่ะ -- '
           u'Please leave this line as they are. Thank you! -->',
     'tr': u'{{/Bu satırı değiştirmeden bırakın}}',
-    'zh': u'{{subst:User:Sz-iwbot/sandbox}}\r\n',
+    'zh': '{{subst:User:Sz-iwbot/sandbox}}\n',
 }
 
 sandboxTitle = {
     'commons': u'Project:Sandbox',
+    'wikidata': 'Project:Sandbox',
     'als': u'Project:Sandchaschte',
     'ar': u'Project:ملعب',
     'arz': u'Project:السبوره',
@@ -139,7 +145,7 @@ sandboxTitle = {
 # This is required for the text that is shown when you run this script
 # with the parameter -help.
 docuReplacements = {
-    '&params;':     pagegenerators.parameterHelp,
+    '&params;': pagegenerators.parameterHelp,
 }
 
 

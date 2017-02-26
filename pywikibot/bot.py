@@ -1,4 +1,4 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """
 User-interface related functions for building bots.
 
@@ -84,12 +84,12 @@ from pywikibot import backports
 from pywikibot import config
 from pywikibot import daemonize
 from pywikibot import version
-from pywikibot.bot_choice import (  # flake8: disable=F401 (unused imports)
+from pywikibot.bot_choice import (
     Option, StandardOption, NestedOption, IntegerOption, ContextOption,
     ListOption, OutputProxyOption, HighlightContextOption,
     ChoiceException, QuitKeyboardInterrupt,
 )
-from pywikibot.logging import (  # flake8: disable=F401
+from pywikibot.logging import (
     CRITICAL, ERROR, INFO, WARNING,
 )
 from pywikibot.logging import DEBUG, INPUT, STDOUT, VERBOSE
@@ -97,13 +97,34 @@ from pywikibot.logging import (
     add_init_routine,
     debug, error, exception, log, output, stdout, warning,
 )
-from pywikibot.logging import critical  # flake8: disable=F401
+from pywikibot.logging import critical
 from pywikibot.tools import deprecated, deprecated_args, PY2, PYTHON_VERSION
 from pywikibot.tools._logging import (
     LoggingFormatter as _LoggingFormatter,
     RotatingFileHandler,
 )
 from pywikibot.tools.formatter import color_format
+
+__all__ = (
+    'CRITICAL', 'ERROR', 'INFO', 'WARNING', 'DEBUG', 'INPUT', 'STDOUT',
+    'VERBOSE', 'critical', 'debug', 'error', 'exception', 'log', 'warning',
+    'output', 'stdout', 'LoggingFormatter', 'RotatingFileHandler',
+    'init_handlers', 'writelogheader',
+    'input', 'input_choice', 'input_yn', 'inputChoice', 'input_list_choice',
+    'Option', 'StandardOption', 'NestedOption', 'IntegerOption',
+    'ContextOption', 'ListOption', 'OutputProxyOption',
+    'HighlightContextOption', 'ChoiceException', 'UnhandledAnswer',
+    'Choice', 'AlwaysChoice',
+    'QuitKeyboardInterrupt',
+    'InteractiveReplace',
+    'calledModuleName', 'handle_args', 'handleArgs', 'showHelp', 'suggest_help',
+    'writeToCommandLogFile', 'open_webbrowser',
+    'BaseBot', 'Bot', 'SingleSiteBot', 'MultipleSitesBot',
+    'CurrentPageBot', 'AutomaticTWSummaryBot',
+    'ExistingPageBot', 'FollowRedirectPageBot', 'CreatingPageBot',
+    'RedirectPageBot', 'NoRedirectPageBot',
+    'WikidataBot',
+)
 
 if not PY2:
     unicode = str
@@ -158,7 +179,7 @@ class LoggingFormatter(_LoggingFormatter):
 # The UserInterface object must define its own init_handlers() method
 # which takes the root logger as its only argument, and which adds to that
 # logger whatever handlers and formatters are needed to process output and
-# display it to the user.  The default (terminal) interface sends level
+# display it to the user. The default (terminal) interface sends level
 # STDOUT to sys.stdout (as all interfaces should) and sends all other
 # levels to sys.stderr; levels WARNING and above are labeled with the
 # level name.
@@ -484,8 +505,7 @@ def inputChoice(question, answers, hotkeys, default=None):
                            automatic_quit=False)
 
 
-def input_list_choice(question, answers, default=None,
-                      automatic_quit=True, force=False):
+def input_list_choice(question, answers, default=None, force=False):
     """
     Ask the user the question and return one of the valid answers.
 
@@ -909,7 +929,7 @@ def handle_args(args=None, do_help=True):
             daemonize.daemonize(redirect_std=redirect_std)
         else:
             # the argument depends on numerical config settings
-            # e.g. -maxlag:
+            # e.g. -maxlag and -step:
             try:
                 _arg = option[1:]
                 # explicitly check for int (so bool doesn't match)
@@ -1130,7 +1150,7 @@ class BaseBot(object):
     # The values are the default values
     # Extend this in subclasses!
     availableOptions = {
-        'always': False,  # ask for confirmation when putting a page?
+        'always': False,  # By default ask for confirmation when putting a page
     }
 
     _current_page = None
@@ -1197,7 +1217,7 @@ class BaseBot(object):
         This also prevents the same title from being printed twice.
 
         @param page: the working page
-        @type  page: pywikibot.Page
+        @type page: pywikibot.Page
         """
         if page != self._current_page:
             self._current_page = page
@@ -1257,7 +1277,7 @@ class BaseBot(object):
         @return: whether the page was saved successfully
         @rtype: bool
         """
-        if oldtext == newtext:
+        if oldtext.rstrip() == newtext.rstrip():
             pywikibot.output(u'No changes were needed on %s'
                              % page.title(asLink=True))
             return
@@ -1393,6 +1413,10 @@ class BaseBot(object):
         if PY2:
             maxint = sys.maxint
 
+            # Python 2 does not clear previous exceptions and method `exit`
+            # relies on sys.exc_info returning exceptions occurring in `run`.
+            sys.exc_clear()
+
         try:
             for page in self.generator:
                 try:
@@ -1488,7 +1512,7 @@ class Bot(BaseBot):
         # self.site causes bugs in subclasses.
         # If the subclass has set self.site before run(), it may be that the
         # bot processes pages on sites other than self.site, and therefore
-        # this method cant alter self.site.  To use this functionality, don't
+        # this method cant alter self.site. To use this functionality, don't
         # set self.site in __init__, and use page.site in treat().
         self._auto_update_site = not self._site
         if not self._auto_update_site:
@@ -1607,7 +1631,7 @@ class CurrentPageBot(BaseBot):
     A bot which automatically sets 'current_page' on each treat().
 
     This class should be always used together with either the MultipleSitesBot
-    or SingleSiteBot class as there is no site managment in this class.
+    or SingleSiteBot class as there is no site management in this class.
     """
 
     ignore_save_related_errors = True

@@ -1,13 +1,13 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """
 Test aspects to allow fine grained control over what tests are executed.
 
 Several parts of the test infrastructure are implemented as mixins,
-such as API result caching and excessive test durations.  An unused
+such as API result caching and excessive test durations. An unused
 mixin to show cache usage is included.
 """
 #
-# (C) Pywikibot team, 2014-2015
+# (C) Pywikibot team, 2014-2017
 #
 # Distributed under the terms of the MIT license.
 #
@@ -59,6 +59,16 @@ from tests.utils import (
     add_metaclass, execute_pwb, DrySite, DryRequest,
     WarningSourceSkipContextManager, AssertAPIErrorContextManager,
 )
+
+try:
+    import pytest_httpbin
+    optional_pytest_httpbin_cls_decorator = pytest_httpbin.use_class_based_httpbin
+except ImportError:
+    pytest_httpbin = None
+
+    def optional_pytest_httpbin_cls_decorator(f):
+        """Empty decorator in case pytest_httpbin is not installed."""
+        return f
 
 OSWIN32 = (sys.platform == 'win32')
 
@@ -483,6 +493,18 @@ class CheckHostnameMixin(TestCaseBase):
         if not hasattr(cls, 'sites'):
             return
 
+        if issubclass(cls, HttpbinTestCase):
+            # If test uses httpbin, then check is pytest test runner is used
+            # and pytest_httpbin module is installed.
+            httpbin_used = hasattr(sys, '_test_runner_pytest') and pytest_httpbin
+        else:
+            httpbin_used = False
+
+        # If pytest_httpbin will be used during tests, then remove httpbin.org from sites.
+        if httpbin_used:
+            cls.sites = dict((k, v) for k, v in cls.sites.items()
+                             if 'httpbin.org' not in v['hostname'])
+
         for key, data in cls.sites.items():
             if 'hostname' not in data:
                 raise Exception('%s: hostname not defined for %s'
@@ -535,7 +557,7 @@ class SiteWriteMixin(TestCaseBase):
     Test cases involving writing to the server.
 
     When editing, the API should not be patched to use
-    CachedRequest.  This class prevents that.
+    CachedRequest. This class prevents that.
     """
 
     @classmethod
@@ -780,7 +802,7 @@ class MetaTestCaseClass(type):
             # Prevent use of pywikibot.Site
             bases = cls.add_base(bases, DisableSiteMixin)
 
-            # 'pwb' tests will _usually_ require a site.  To ensure the
+            # 'pwb' tests will _usually_ require a site. To ensure the
             # test class dependencies are declarative, this requires the
             # test writer explicitly sets 'site=False' so code reviewers
             # check that the script invoked by pwb will not load a site.
@@ -1322,14 +1344,14 @@ class WikibaseClientTestCase(WikibaseTestCase):
         Set up the test class.
 
         Checks that all sites are configured as a Wikibase client,
-        with Site.has_transcluded_data() returning True.
+        with Site.has_data_repository returning True.
         """
         super(WikibaseClientTestCase, cls).setUpClass()
 
         for site in cls.sites.values():
-            if not site['site'].has_transcluded_data:
+            if not site['site'].has_data_repository:
                 raise unittest.SkipTest(
-                    u'%s: %r does not have transcluded data'
+                    '%s: %r does not have data repository'
                     % (cls.__name__, site['site']))
 
 
@@ -1643,3 +1665,43 @@ class AutoDeprecationTestCase(CapturingTestCase, DeprecationTestCase):
         CapturingTestCase.process_assert,
         CapturingTestCase.patch_assert,
     ]
+
+
+@optional_pytest_httpbin_cls_decorator
+class HttpbinTestCase(TestCase):
+
+    """
+    Custom test case class, which allows doing dry httpbin tests using pytest-httpbin.
+
+    Test cases, which use httpbin, need to inherit this class.
+    """
+
+    sites = {
+        'httpbin': {
+            'hostname': 'httpbin.org',
+        },
+    }
+
+    def get_httpbin_url(self, path=''):
+        """
+        Return url of httpbin.
+
+        If pytest is used, returns url of local httpbin server.
+        Otherwise, returns: http://httpbin.org
+        """
+        if hasattr(self, 'httpbin'):
+            return self.httpbin.url + path
+        else:
+            return 'http://httpbin.org' + path
+
+    def get_httpbin_hostname(self):
+        """
+        Return httpbin hostname.
+
+        If pytest is used, returns hostname of local httpbin server.
+        Otherwise, returns: httpbin.org
+        """
+        if hasattr(self, 'httpbin'):
+            return '{0}:{1}'.format(self.httpbin.host, self.httpbin.port)
+        else:
+            return 'httpbin.org'

@@ -1,7 +1,7 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Test that each script can be compiled and executed."""
 #
-# (C) Pywikibot team, 2014
+# (C) Pywikibot team, 2014-2016
 #
 # Distributed under the terms of the MIT license.
 #
@@ -114,7 +114,6 @@ script_input = {
 
 auto_run_script_list = [
     'blockpageschecker',
-    'blockreview',
     'casechecker',
     'catall',
     'category_redirect',
@@ -363,6 +362,8 @@ class TestScriptMeta(MetaTestCaseClass):
 
             # Disable test by default in nosetests
             if script_name in unrunnable_script_list:
+                # flag them as an expectedFailure due to py.test (T135594)
+                dct[test_name] = unittest.expectedFailure(dct[test_name])
                 dct[test_name].__test__ = False
 
         return super(TestScriptMeta, cls).__new__(cls, name, bases, dct)
@@ -423,7 +424,7 @@ class TestScriptSimulate(DefaultSiteTestCase, PwbTestCase):
     _results = no_args_expected_results
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     try:
         unittest.main()
     except SystemExit:

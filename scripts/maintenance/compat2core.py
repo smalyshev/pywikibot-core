@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """
 A helper script to convert compat 1.0 scripts to the new core 2.0 framework.
 
@@ -18,11 +18,11 @@ usage
 
 to convert a script and show warnings about deprecated methods:
 
-    python  pwb.py maintenance/compat2core <scriptname>
+    python pwb.py compat2core <scriptname>
 
 to show warnings about deprecated methods:
 
-    python pwb.py maintenance/compat2core <scriptname> -warnonly
+    python pwb.py compat2core <scriptname> -warnonly
 """
 #
 # (C) xqt, 2014-2015

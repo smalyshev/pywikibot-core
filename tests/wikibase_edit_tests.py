@@ -1,4 +1,4 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """
 Tests for editing Wikibase items.
 
@@ -6,7 +6,7 @@ Tests which should fail should instead be in the TestWikibaseSaveTest
 class in edit_failiure_tests.py
 """
 #
-# (C) Pywikibot team, 2014
+# (C) Pywikibot team, 2014-2017
 #
 # Distributed under the terms of the MIT license.
 #
@@ -18,6 +18,7 @@ __version__ = '$Id$'
 import time
 
 import pywikibot
+from pywikibot.tools import MediaWikiVersion
 
 from tests.aspects import unittest, WikibaseTestCase
 
@@ -223,7 +224,7 @@ class TestWikibaseMakeClaim(WikibaseTestCase):
 
     def test_WbMonolingualText_edit(self):
         """Attempt adding a monolingual text with valid input."""
-        # Clean the slate in preparation for test."""
+        # Clean the slate in preparation for test.
         testsite = self.get_repo()
         item = self._clean_item(testsite, 'P271')
 
@@ -236,6 +237,51 @@ class TestWikibaseMakeClaim(WikibaseTestCase):
         # confirm new claim
         item.get(force=True)
         claim = item.claims['P271'][0]
+        self.assertEqual(claim.getTarget(), target)
+
+    def test_WbQuantity_edit_unbound(self):
+        """Attempt adding a quantity with unbound errors."""
+        # Clean the slate in preparation for test.
+        testsite = self.get_repo()
+        item = self._clean_item(testsite, 'P69')
+
+        # Make sure the wiki supports unbound uncertainties
+        if MediaWikiVersion(testsite.version()) < MediaWikiVersion('1.29.0-wmf.2'):
+            raise unittest.SkipTest('Wiki version must be 1.29.0-wmf.2 or '
+                                    'newer to support unbound uncertainties.')
+
+        # set new claim
+        claim = pywikibot.page.Claim(testsite, 'P69', datatype='quantity')
+        target = pywikibot.WbQuantity(amount=1234)
+        claim.setTarget(target)
+        item.addClaim(claim)
+
+        # confirm new claim
+        item.get(force=True)
+        claim = item.claims['P69'][0]
+        self.assertEqual(claim.getTarget(), target)
+
+    def test_WbQuantity_edit(self):
+        """Attempt adding a quantity with valid input."""
+        # Clean the slate in preparation for test.
+        testsite = self.get_repo()
+        item = self._clean_item(testsite, 'P69')
+
+        # Make sure the wiki supports wikibase-conceptbaseuri
+        version = testsite.version()
+        if MediaWikiVersion(version) < MediaWikiVersion('1.28-wmf.23'):
+            raise unittest.SkipTest('Wiki version must be 1.28-wmf.23 or '
+                                    'newer to expose wikibase-conceptbaseuri.')
+
+        # set new claim
+        claim = pywikibot.page.Claim(testsite, 'P69', datatype='quantity')
+        target = pywikibot.WbQuantity(amount=1234, error=1, unit=item)
+        claim.setTarget(target)
+        item.addClaim(claim)
+
+        # confirm new claim
+        item.get(force=True)
+        claim = item.claims['P69'][0]
         self.assertEqual(claim.getTarget(), target)
 
     def test_identifier_edit(self):
@@ -330,7 +376,7 @@ class TestWikibaseRemoveQualifier(WikibaseTestCase):
         self.assertNotIn('P580', claim.qualifiers.keys())
         self.assertNotIn('P88', claim.qualifiers.keys())
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     try:
         unittest.main()
     except SystemExit:

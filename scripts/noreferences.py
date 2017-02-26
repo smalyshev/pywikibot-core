@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """
 This script adds a missing references section to pages.
 
@@ -57,7 +57,7 @@ from pywikibot.pagegenerators import (
 # This is required for the text that is shown when you run this script
 # with the parameter -help.
 docuReplacements = {
-    '&params;':     pagegenerators.parameterHelp,
+    '&params;': pagegenerators.parameterHelp,
 }
 
 # References sections are usually placed before further reading / external
@@ -130,6 +130,7 @@ placeBeforeSections = {
     ],
     'fr': [
         u'Liens externes',
+        u'Lien externe',
         u'Voir aussi',
         u'Notes'
     ],
@@ -425,6 +426,7 @@ referencesSubstitute = {
         'dsb': u'{{referency}}',
         'fa': u'{{پانویس}}',
         'fi': u'{{viitteet}}',
+        'fr': u'{{références}}',
         'he': u'{{הערות שוליים}}',
         'hsb': u'{{referency}}',
         'hu': u'{{Források}}',
@@ -545,7 +547,7 @@ class NoReferencesBot(Bot):
                 if match:
                     if textlib.isDisabled(oldText, match.start()):
                         pywikibot.output(
-                            'Existing  %s section is commented out, skipping.'
+                            'Existing %s section is commented out, skipping.'
                             % section)
                         index = match.end()
                     else:

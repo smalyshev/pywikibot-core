@@ -1,4 +1,4 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """weblinkchecker test module."""
 #
 # (C) Pywikibot team, 2015
@@ -92,7 +92,7 @@ class TestMementoDefault(MementoTestCase):
             self._get_archive_url, 'invalid')
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     try:
         unittest.main()
     except SystemExit:

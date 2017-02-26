@@ -5,12 +5,12 @@ Module to define and load pywikibot configuration default and user preferences.
 User preferences are loaded from a python file called user-config.py, which
 may be located in directory specified by the environment variable
 PYWIKIBOT2_DIR, or the same directory as pwb.py, or in a directory within
-the users home.  See get_base_dir for more information.
+the users home. See get_base_dir for more information.
 
 If user-config.py can not be found in any of those locations, this module
 will fail to load unless the environment variable PYWIKIBOT2_NO_USER_CONFIG
-is set to a value other than '0'.  i.e. PYWIKIBOT2_NO_USER_CONFIG=1 will
-allow config to load without a user-config.py.  However, warnings will be
+is set to a value other than '0'. i.e. PYWIKIBOT2_NO_USER_CONFIG=1 will
+allow config to load without a user-config.py. However, warnings will be
 shown if user-config.py was not loaded.
 To prevent these warnings, set PYWIKIBOT2_NO_USER_CONFIG=2.
 
@@ -33,7 +33,7 @@ build paths relative to base_dir:
 """
 #
 # (C) Rob W.W. Hooft, 2003
-# (C) Pywikibot team, 2003-2015
+# (C) Pywikibot team, 2003-2017
 #
 # Distributed under the terms of the MIT license.
 #
@@ -87,13 +87,13 @@ class _ConfigurationDeprecationWarning(UserWarning):
 
 # Note: all variables defined in this module are made available to bots as
 # configuration settings, *except* variable names beginning with an
-# underscore (example: _variable).  Be sure to use an underscore on any
+# underscore (example: _variable). Be sure to use an underscore on any
 # variables that are intended only for internal use and not to be exported
 # to other modules.
 
 _private_values = ['authenticate', 'proxy', 'db_password']
 _deprecated_variables = ['use_SSL_onlogin', 'use_SSL_always',
-                         'available_ssl_project']
+                         'available_ssl_project', 'fake_user_agent']
 
 # ############# ACCOUNT SETTINGS ##############
 
@@ -116,6 +116,7 @@ mylang = 'language'
 # If you have a unique username for all languages of a family,
 # you can use '*'
 # usernames['wikibooks']['*'] = 'mySingleUsername'
+# You may use '*' for family name in a similar manner.
 #
 # If you have a sysop account on some wikis, this will be used to delete pages
 # or to edit locked pages if you add such lines to your
@@ -137,16 +138,22 @@ disambiguation_comment = collections.defaultdict(dict)
 user_agent_format = ('{script_product} ({script_comments}) {pwb} ({revision}) '
                      '{http_backend} {python}')
 
-# Fake user agent
-# Used to retrieve pages in reflinks.py,
-# to work around user-agent sniffing webpages
-# When None or True,
-# Use random user agent if either browseragents or fake_useragent
-# packages are installed
-# Otherwise use pywikibot.comms.http.user_agent()
-# When set to False,
-# disables use of automatic user agents
-fake_user_agent = None
+# Fake user agent.
+# Some external websites reject bot-like user agents. It is possible to use
+# fake user agents in requests to these websites.
+# It is recommended to default this to False and use on an as-needed basis.
+#
+# Default behaviours in modules that can utilize fake UAs.
+# True for enabling fake UA, False for disabling / using pywikibot's own UA, str
+# to specify custom UA.
+fake_user_agent_default = {'reflinks': False, 'weblinkchecker': False}
+# Website domains excepted to the default behaviour.
+# True for enabling, False for disabling, str to hardcode a UA.
+# Example: {'problematic.site.example': True,
+#           'prefers.specific.ua.example': 'snakeoil/4.2'}
+fake_user_agent_exceptions = {}
+# This following option is deprecated in favour of finer control options above.
+fake_user_agent = False
 
 # The default interface for communicating with the site
 # currently the only defined interface is 'APISite', so don't change this!
@@ -199,7 +206,7 @@ authenticate = {}
 #
 # Secure connection overrides
 #
-# These settings are deprecated.  They existed to support the Wikimedia
+# These settings are deprecated. They existed to support the Wikimedia
 # family which only served HTTPS on https://secure.wikimedia.org/<site>/<uri>
 # Use Family.protocol()
 use_SSL_onlogin = False  # if available, use SSL when logging in
@@ -208,7 +215,8 @@ use_SSL_always = False   # if available, use SSL for all API queries
 available_ssl_project = []
 
 # By default you are asked for a password on the terminal.
-# A password file may be used. e.g. password_file = ".passwd"
+# A password file may be used, e.g. password_file = ".passwd".
+# The path to the password file is relative to that of the user_config file.
 # The password file should consist of lines containing
 # Python tuples of any of the following formats:
 # (code, family, username, password)
@@ -219,7 +227,7 @@ password_file = None
 # edit summary to use if not supplied by bot script
 # WARNING: this should NEVER be used in practice, ALWAYS supply a more
 #          relevant summary for bot edits
-default_edit_summary = u'Pywikibot v.2'
+default_edit_summary = u'Pywikibot 3.0-dev'
 
 # What permissions to use to set private files to it
 # such as password file.
@@ -516,6 +524,22 @@ log_pywiki_repo_version = False
 # (overrides log setting above)
 debug_log = []
 
+# ############# EXTERNAL SCRIPT PATH SETTING ##############
+# set your own script path to lookup for your script files.
+# your private script path must be located inside the
+# framework folder, subfolders must be delimited by '.'.
+# every folder must contain an (empty) __init__.py file.
+#
+# The search order is
+# 1. user_script_paths in the given order
+# 2. scripts
+# 3. scripts/maintenance
+# 4. scripts/archive
+#
+# sample:
+# user_script_paths = ['scripts.myscripts']
+user_script_paths = []
+
 # ############# INTERWIKI SETTINGS ##############
 
 # Should interwiki.py report warnings for missing links between foreign
@@ -590,7 +614,7 @@ upload_to_commons = False
 # but never more than 'maxthrottle' seconds. However - if you are running
 # more than one bot in parallel the times are lengthened.
 # By default, the get_throttle is turned off, and 'maxlag' is used to
-# control the rate of server access.  Set minthrottle to non-zero to use a
+# control the rate of server access. Set minthrottle to non-zero to use a
 # throttle on read access.
 minthrottle = 0
 maxthrottle = 60
@@ -603,7 +627,7 @@ put_throttle = 10
 # than 'noisysleep' seconds, it is logged on the screen.
 noisysleep = 3.0
 
-# Defer bot edits during periods of database server lag.  For details, see
+# Defer bot edits during periods of database server lag. For details, see
 # https://www.mediawiki.org/wiki/Maxlag_parameter
 # You can set this variable to a number of seconds, or to None (or 0) to
 # disable this behavior. Higher values are more aggressive in seeking
@@ -617,6 +641,10 @@ maxlag = 5
 # you heavily use redirect.py with action "double", and especially if you're
 # running solve_disambiguation.py with the -primary argument.
 special_page_limit = 500
+
+# Maximum of pages which can be retrieved at one time from wiki server.
+# -1 indicates limit by api restriction
+step = -1
 
 # Maximum number of times to retry an API request before quitting.
 max_retries = 25

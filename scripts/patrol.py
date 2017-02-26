@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """
 The bot is meant to mark the edits based on info obtained by whitelist.
 
@@ -17,8 +17,8 @@ edited a page on their white list it gets patrolled. It will also patrol pages
 which start with the mentioned link (e.g. [[foo]] will also patrol [[foobar]]).
 
 To avoid redlinks it's possible to use Special:PrefixIndex as a prefix so that
-it will list all pages which will be patrolled. The page after the slash will be
-used then.
+it will list all pages which will be patrolled. The page after the slash will
+be used then.
 
 On Wikisource, it'll also check if the page is on the author namespace in which
 case it'll also patrol pages which are linked from that page.
@@ -80,12 +80,11 @@ class PatrolBot(SingleSiteBot):
         """
         Constructor.
 
-        @kwarg feed            - The changes feed to work on (Newpages
-                                  or Recentchanges)
-        @kwarg ask             - If True, confirm each patrol action
-        @kwarg whitelist       - page title for whitelist (optional)
-        @kwarg autopatroluserns - Takes user consent to automatically patrol
-        @kwarg versionchecktime - Check versionchecktime lapse in sec
+        @kwarg feed: The changes feed to work on (Newpages or Recentchanges)
+        @kwarg ask: If True, confirm each patrol action
+        @kwarg whitelist: page title for whitelist (optional)
+        @kwarg autopatroluserns: Takes user consent to automatically patrol
+        @kwarg versionchecktime: Check versionchecktime lapse in sec
         """
         self.availableOptions.update({
             'ask': False,
@@ -388,7 +387,7 @@ class PatrolRule(object):
         Constructor.
 
         @param page_title: The page title for this rule
-        @type  page_title: pywikibot.Page
+        @type page_title: pywikibot.Page
         """
         self.page_title = page_title
 
@@ -409,7 +408,7 @@ class LinkedPagesRule(PatrolRule):
         """Constructor.
 
         @param page_title: The page title for this rule
-        @type  page_title: pywikibot.Page
+        @type page_title: pywikibot.Page
         """
         self.site = pywikibot.Site()
         self.page_title = page_title

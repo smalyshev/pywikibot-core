@@ -12,7 +12,7 @@ This module also includes objects:
 
 """
 #
-# (C) Pywikibot team, 2008-2016
+# (C) Pywikibot team, 2008-2017
 #
 # Distributed under the terms of the MIT license.
 #
@@ -23,6 +23,7 @@ __version__ = '$Id$'
 
 import hashlib
 import logging
+import os.path
 import re
 import sys
 
@@ -34,13 +35,19 @@ except ImportError:
 from collections import defaultdict, namedtuple
 from warnings import warn
 
-if sys.version_info[0] > 2:
+from pywikibot.tools import PY2
+
+if not PY2:
     unicode = basestring = str
     long = int
     from html import entities as htmlentitydefs
     from urllib.parse import quote_from_bytes, unquote_to_bytes
 else:
-    chr = unichr  # flake8 F821 (undefined name) disabled by tox.ini
+    if __debug__ and not PY2:
+        unichr = NotImplemented  # pyflakes workaround
+
+    chr = unichr
+
     import htmlentitydefs
     from urllib import quote as quote_from_bytes, unquote as unquote_to_bytes
 
@@ -57,19 +64,41 @@ from pywikibot.exceptions import (
     SiteDefinitionError,
     UserRightsError,
 )
+from pywikibot.data.api import APIError
 from pywikibot.family import Family
-from pywikibot.site import Namespace
+from pywikibot.site import Namespace, need_version
 from pywikibot.tools import (
-    PYTHON_VERSION, PY2,
+    compute_file_hash,
+    PYTHON_VERSION,
     MediaWikiVersion, UnicodeMixin, ComparableMixin, DotReadableDict,
     deprecated, deprecate_arg, deprecated_args, issue_deprecation_warning,
     ModuleDeprecationWrapper as _ModuleDeprecationWrapper,
     first_upper, remove_last_args, _NotImplementedWarning,
     OrderedDict, Counter,
 )
-from pywikibot.tools.ip import ip_regexp  # flake8: disable=F401 (unused import)
+from pywikibot.tools.ip import ip_regexp
 from pywikibot.tools.ip import is_IP
 
+__all__ = (
+    'BasePage',
+    'Page',
+    'FilePage',
+    'Category',
+    'User',
+    'WikibasePage',
+    'ItemPage',
+    'Property',
+    'PropertyPage',
+    'Claim',
+    'Revision',
+    'FileInfo',
+    'Link',
+    'html2unicode',
+    'UnicodeToAsciiHtml',
+    'unicode2html',
+    'url2unicode',
+    'ip_regexp',  # unused & deprecated
+)
 
 logger = logging.getLogger("pywiki.wiki.page")
 
@@ -83,7 +112,7 @@ class BasePage(UnicodeMixin, ComparableMixin):
     BasePage: Base object for a MediaWiki page.
 
     This object only implements internally methods that do not require
-    reading from or writing to the wiki.  All other methods are delegated
+    reading from or writing to the wiki. All other methods are delegated
     to the Site object.
 
     Will be subclassed by Page, WikibasePage, and FlowPage.
@@ -104,7 +133,7 @@ class BasePage(UnicodeMixin, ComparableMixin):
 
           - If the first argument is a Page, create a copy of that object.
             This can be used to convert an existing Page into a subclass
-            object, such as Category or FilePage.  (If the title is also
+            object, such as Category or FilePage. (If the title is also
             given as the second argument, creates a copy with that title;
             this is used when pages are moved.)
           - If the first argument is a Site, create a Page on that Site
@@ -112,7 +141,7 @@ class BasePage(UnicodeMixin, ComparableMixin):
             and the third as the namespace number. The namespace number is
             mandatory, even if the title includes the namespace prefix. This
             is the preferred syntax when using an already-normalized title
-            obtained from api.php or a database dump.  WARNING: may produce
+            obtained from api.php or a database dump. WARNING: may produce
             invalid objects if page title isn't in normal form!
           - If the first argument is a Link, create a Page from that link.
             This is the preferred syntax when using a title scraped from
@@ -209,13 +238,24 @@ class BasePage(UnicodeMixin, ComparableMixin):
         if not hasattr(self, '_depth'):
             # Check if the namespace allows subpages
             if self._namespace_obj.subpages:
-                # Count how many '/'s we have in the title
-                _depth = len(list(re.finditer('/', self.title())))
+                _depth = self.title().count('/')
             else:
                 # Does not allow subpages, which means depth is always 0
                 _depth = 0
 
         return _depth
+
+    @property
+    def pageid(self):
+        """
+        Return pageid of the page.
+
+        @return: pageid or 0 if page does not exist
+        @rtype: int
+        """
+        if not hasattr(self, '_pageid'):
+            self.site.loadpageinfo(self)
+        return self._pageid
 
     @deprecated_args(decode=None, savetitle="asUrl")
     def title(self, underscore=False, withNamespace=True,
@@ -460,16 +500,20 @@ class BasePage(UnicodeMixin, ComparableMixin):
         # TODO: what about redirects, errors?
         return self._revisions[oldid].text
 
-    def permalink(self, oldid=None):
+    def permalink(self, oldid=None, percent_encoded=True):
         """Return the permalink URL of an old revision of this page.
 
         @param oldid: The revid of the revision desired.
         @rtype: unicode
         """
+        if percent_encoded:
+            title = self.title(asUrl=True)
+        else:
+            title = self.title(asUrl=False).replace(' ', '_')
         return "//%s%s/index.php?title=%s&oldid=%s" \
                % (self.site.hostname(),
                   self.site.scriptpath(),
-                  self.title(asUrl=True),
+                  title,
                   (oldid if oldid is not None else self.latest_revision_id))
 
     @property
@@ -817,7 +861,7 @@ class BasePage(UnicodeMixin, ComparableMixin):
         Return other member of the article-talk page pair for this Page.
 
         If self is a talk page, returns the associated content page;
-        otherwise, returns the associated talk page.  The returned page need
+        otherwise, returns the associated talk page. The returned page need
         not actually exist on the wiki.
 
         @return: Page or None if self is a special page.
@@ -1237,7 +1281,7 @@ class BasePage(UnicodeMixin, ComparableMixin):
         Save the page with the contents of the first argument as the text.
 
         This method is maintained primarily for backwards-compatibility.
-        For new code, using Page.save() is preferred.  See save() method
+        For new code, using Page.save() is preferred. See save() method
         docs for all parameters not listed here.
 
         @param newtext: The complete text of the revised page.
@@ -1258,7 +1302,7 @@ class BasePage(UnicodeMixin, ComparableMixin):
 
         Asynchronous version of put (takes the same arguments), which places
         pages on a queue to be saved by a daemon thread. All arguments are
-        the same as for .put().  This version is maintained solely for
+        the same as for .put(). This version is maintained solely for
         backwards-compatibility.
         """
         self.put(newtext, summary=summary, watchArticle=watchArticle,
@@ -1442,7 +1486,7 @@ class BasePage(UnicodeMixin, ComparableMixin):
         """
         Return a list of Page objects for templates used on this Page.
 
-        Template parameters are ignored.  This method only returns embedded
+        Template parameters are ignored. This method only returns embedded
         templates, not template pages that happen to be referenced through
         a normal link.
 
@@ -1461,7 +1505,7 @@ class BasePage(UnicodeMixin, ComparableMixin):
         """
         Iterate Page objects for templates used on this Page.
 
-        Template parameters are ignored.  This method only returns embedded
+        Template parameters are ignored. This method only returns embedded
         templates, not template pages that happen to be referenced through
         a normal link.
 
@@ -1707,6 +1751,23 @@ class BasePage(UnicodeMixin, ComparableMixin):
         return [{'user': rev.user, 'timestamp': unicode(rev.timestamp.isoformat())}
                 for rev in self.revisions(total=total)]
 
+    def merge_history(self, dest, timestamp=None, reason=None):
+        """
+        Merge revisions from this page into another page.
+
+        See L{APISite.merge_history} for details.
+
+        @param dest: Destination page to which revisions will be merged
+        @type dest: pywikibot.Page
+        @param timestamp: Revisions from this page dating up to this timestamp
+            will be merged into the destination page (if not given or False,
+            all revisions will be merged)
+        @type timestamp: pywikibot.Timestamp
+        @param reason: Optional reason for the history merge
+        @type reason: str
+        """
+        self.site.merge_history(self, dest, timestamp, reason)
+
     @deprecate_arg("throttle", None)
     def move(self, newtitle, reason=None, movetalkpage=True, sysop=False,
              deleteAndMove=False, safe=True):
@@ -1835,8 +1896,7 @@ class BasePage(UnicodeMixin, ComparableMixin):
             raise ValueError(u'Timestamp %d is not a deleted revision' % timestamp)
         self._deletedRevs[timestamp]['marked'] = undelete
 
-    @deprecate_arg('throttle', None)
-    @deprecate_arg('comment', 'reason')
+    @deprecated_args(comment='reason', throttle=None)
     def undelete(self, reason=None):
         """
         Undelete revisions based on the markers set by previous calls.
@@ -1885,12 +1945,12 @@ class BasePage(UnicodeMixin, ComparableMixin):
 
         @param protections: A dict mapping type of protection to protection
             level of that type.
-        @type  protections: dict
+        @type protections: dict
         @param reason: Reason for the action
-        @type  reason: basestring
+        @type reason: basestring
         @param prompt: Whether to ask user for confirmation (deprecated).
                        Defaults to protections is None
-        @type  prompt: bool
+        @type prompt: bool
         """
         def process_deprecated_arg(value, arg_name):
             # if protections was set and value is None, don't interpret that
@@ -1929,7 +1989,7 @@ class BasePage(UnicodeMixin, ComparableMixin):
             warn(u'"unprotect" argument of protect() is deprecated',
                  DeprecationWarning, 2)
             protections = dict(
-                [(p_type, "") for p_type in self.applicable_protections()])
+                (p_type, "") for p_type in self.applicable_protections())
         answer = 'y'
         if called_using_deprecated_arg and prompt is None:
             prompt = True
@@ -2109,8 +2169,7 @@ class Page(BasePage):
 
     """Page: A MediaWiki page."""
 
-    @deprecate_arg("insite", None)
-    @deprecate_arg("defaultNamespace", "ns")
+    @deprecated_args(defaultNamespace='ns', insite=None)
     def __init__(self, source, title=u"", ns=0):
         """Instantiate a Page object."""
         if isinstance(source, pywikibot.site.BaseSite):
@@ -2131,7 +2190,7 @@ class Page(BasePage):
         """
         # WARNING: may not return all templates used in particularly
         # intricate cases such as template substitution
-        titles = list(t.title() for t in self.templates())
+        titles = [t.title() for t in self.templates()]
         templates = textlib.extract_templates_and_params(self.text)
         # backwards-compatibility: convert the dict returned as the second
         # element into a list in the format used by old scripts
@@ -2289,7 +2348,7 @@ class FilePage(Page):
             value: instance of FileInfo()
         @rtype: dict
         """
-        if not hasattr(self, '_file_revisions'):
+        if not len(self._file_revisions):
             self.site.loadimageinfo(self, history=True)
         return self._file_revisions
 
@@ -2409,6 +2468,99 @@ class FilePage(Page):
             (default False)
         """
         return self.site.imageusage(self, total=total, content=content)
+
+    def upload(self, source, **kwargs):
+        """
+        Upload this file to the wiki.
+
+        keyword arguments are from site.upload() method.
+
+        @param source: Path or URL to the file to be uploaded.
+        @type source: str
+
+        @keyword comment: Edit summary; if this is not provided, then
+            filepage.text will be used. An empty summary is not permitted.
+            This may also serve as the initial page text (see below).
+        @keyword text: Initial page text; if this is not set, then
+            filepage.text will be used, or comment.
+        @keyword watch: If true, add filepage to the bot user's watchlist
+        @keyword ignore_warnings: It may be a static boolean, a callable returning
+            a boolean or an iterable. The callable gets a list of UploadWarning
+            instances and the iterable should contain the warning codes for
+            which an equivalent callable would return True if all UploadWarning
+            codes are in thet list. If the result is False it'll not continue
+            uploading the file and otherwise disable any warning and
+            reattempt to upload the file. NOTE: If report_success is True or
+            None it'll raise an UploadWarning exception if the static boolean is
+            False.
+        @type ignore_warnings: bool or callable or iterable of str
+        @keyword chunk_size: The chunk size in bytesfor chunked uploading (see
+            U{https://www.mediawiki.org/wiki/API:Upload#Chunked_uploading}). It
+            will only upload in chunks, if the version number is 1.20 or higher
+            and the chunk size is positive but lower than the file size.
+        @type chunk_size: int
+        @keyword _file_key: Reuses an already uploaded file using the filekey. If
+            None (default) it will upload the file.
+        @type _file_key: str or None
+        @keyword _offset: When file_key is not None this can be an integer to
+            continue a previously canceled chunked upload. If False it treats
+            that as a finished upload. If True it requests the stash info from
+            the server to determine the offset. By default starts at 0.
+        @type _offset: int or bool
+        @keyword _verify_stash: Requests the SHA1 and file size uploaded and
+            compares it to the local file. Also verifies that _offset is
+            matching the file size if the _offset is an int. If _offset is False
+            if verifies that the file size match with the local file. If None
+            it'll verifies the stash when a file key and offset is given.
+        @type _verify_stash: bool or None
+        @keyword report_success: If the upload was successful it'll print a
+            success message and if ignore_warnings is set to False it'll
+            raise an UploadWarning if a warning occurred. If it's None (default)
+            it'll be True if ignore_warnings is a bool and False otherwise. If
+            it's True or None ignore_warnings must be a bool.
+        @return: It returns True if the upload was successful and False
+            otherwise.
+        @rtype: bool
+        """
+        filename = url = None
+        if '://' in source:
+            url = source
+        else:
+            filename = source
+        return self.site.upload(self, source_filename=filename, source_url=url,
+                                **kwargs)
+
+    def download(self, filename=None, chunk_size=100 * 1024):
+        """
+        Download to filename file of FilePage.
+
+        @param filename: filename where to save file:
+            None: self.title(as_filename=True, withNamespace=False)
+            will be used
+            str: provided filename will be used.
+        @type None or str
+        @return: True if download is successful, False otherwise.
+        @raise: IOError if filename cannot be written for any reason.
+        """
+        if filename is None:
+            filename = self.title(as_filename=True, withNamespace=False)
+
+        filename = os.path.expanduser(filename)
+
+        req = http.fetch(self.latest_file_info.url, stream=True)
+        if req.status == 200:
+            try:
+                with open(filename, 'wb') as f:
+                    for chunk in req.data.iter_content(chunk_size):
+                        f.write(chunk)
+            except IOError as e:
+                raise e
+
+            sha1 = compute_file_hash(filename)
+            return sha1 == self.latest_file_info.sha1
+        else:
+            pywikibot.warning('Unsuccesfull request (%s): %s' % (req.status, req.uri))
+            return False
 
 
 wrapper = _ModuleDeprecationWrapper(__name__)
@@ -2605,7 +2757,7 @@ class Category(Page):
                         if total == 0:
                             return
 
-    @pywikibot.site.need_version("1.13")
+    @need_version('1.13')
     def isEmptyCategory(self):
         """
         Return True if category has no members (including subcategories).
@@ -2615,7 +2767,7 @@ class Category(Page):
         ci = self.categoryinfo
         return sum(ci[k] for k in ['files', 'pages', 'subcats']) == 0
 
-    @pywikibot.site.need_version("1.11")
+    @need_version('1.11')
     def isHiddenCategory(self):
         """
         Return True if the category is hidden.
@@ -2626,7 +2778,7 @@ class Category(Page):
 
     def copyTo(self, cat, message):
         """
-        Copy text of category page to a new page.  Does not move contents.
+        Copy text of category page to a new page. Does not move contents.
 
         @param cat: New category title (without namespace) or Category object
         @type cat: unicode or Category
@@ -2667,7 +2819,7 @@ class Category(Page):
         Copy partial category page text (not contents) to a new title.
 
         Like copyTo above, except this removes a list of templates (like
-        deletion templates) that appear in the old category text.  It also
+        deletion templates) that appear in the old category text. It also
         removes all text between the two HTML comments BEGIN CFD TEMPLATE
         and END CFD TEMPLATE. (This is to deal with CFD templates that are
         substituted.)
@@ -2885,10 +3037,8 @@ class User(Page):
 
         @rtype: bool
         """
-        if self.isAnonymous():
-            return False
-        else:
-            return self.getprops(force).get('missing') is None
+        # T135828: the registration timestamp may be None but the key exists
+        return 'registration' in self.getprops(force)
 
     def isAnonymous(self):
         """
@@ -3052,7 +3202,7 @@ class User(Page):
         @rtype: bool
         """
         if not self.isEmailable():
-            raise NotEmailableError('%s is not mailable' % self.username)
+            raise NotEmailableError(self)
 
         if not self.site.has_right('sendemail'):
             raise UserRightsError('You don\'t have permission to send mail')
@@ -3128,11 +3278,20 @@ class User(Page):
         try:
             self.site.blockuser(self, expiry, reason, anononly, nocreate,
                                 autoblock, noemail, reblock)
-        except pywikibot.data.api.APIError as err:
+        except APIError as err:
             if err.code == 'invalidrange':
                 raise ValueError("%s is not a valid IP range." % self.username)
             else:
                 raise err
+
+    def unblock(self, reason=None):
+        """
+        Remove the block for the user.
+
+        @param reason: Reason for the unblock.
+        @type reason: basestring
+        """
+        self.site.unblockuser(self, reason)
 
     @deprecated("contributions")
     @deprecate_arg("limit", "total")  # To be consistent with rest of framework
@@ -3150,8 +3309,7 @@ class User(Page):
         for item in self.contributions(total=total):
             yield item[0]
 
-    @deprecate_arg("limit", "total")  # To be consistent with rest of framework
-    @deprecate_arg("namespace", "namespaces")
+    @deprecated_args(limit='total', namespace='namespaces')
     def contributions(self, total=500, namespaces=[]):
         """
         Yield tuples describing this user edits.
@@ -3298,7 +3456,14 @@ class WikibasePage(BasePage):
 
         # .site forces a parse of the Link title to determine site
         self.repo = self.site
+        # Link.__init__, called from Page.__init__, has cleaned the title
+        # stripping whitespace and uppercasing the first letter according
+        # to the namespace case=first-letter.
         self.id = self._link.title
+        if not self.is_valid_id(self.id):
+            raise pywikibot.InvalidTitle(
+                "'%s' is not a valid %s page title"
+                % (self.id, self.entity_type))
 
     def _defined_by(self, singular=False):
         """
@@ -3391,7 +3556,7 @@ class WikibasePage(BasePage):
         """
         if not hasattr(self, '_content'):
             try:
-                self.get()
+                self.get(get_redirect=True)
                 return True
             except pywikibot.NoPage:
                 return False
@@ -3430,7 +3595,12 @@ class WikibasePage(BasePage):
             if not identification:
                 raise pywikibot.NoPage(self)
 
-            data = self.repo.loadcontent(identification)
+            try:
+                data = self.repo.loadcontent(identification)
+            except APIError as err:
+                if err.code == 'no-such-entity':
+                    raise pywikibot.NoPage(self)
+                raise
             item_index = list(data.keys())[0]
             if lazy_loading_id or item_index != '-1':
                 self.id = item_index
@@ -3579,6 +3749,21 @@ class WikibasePage(BasePage):
             return int(self.id[1:]) if self.id != '-1' else -1
 
         return self.id
+
+    @classmethod
+    def is_valid_id(cls, entity_id):
+        """
+        Whether the string can be a valid id of the entity type.
+
+        @param entity_id: The ID to test.
+        @type entity_id: basestring
+
+        @rtype: bool
+        """
+        if not hasattr(cls, 'title_pattern'):
+            return True
+
+        return bool(re.match(cls.title_pattern, entity_id))
 
     @property
     def latest_revision_id(self):
@@ -3743,6 +3928,9 @@ class ItemPage(WikibasePage):
     been looked up, the item is then defined by the qid.
     """
 
+    entity_type = 'item'
+    title_pattern = r'^(Q[1-9]\d*|-1)$'
+
     def __init__(self, site, title=None, ns=None):
         """
         Constructor.
@@ -3764,17 +3952,11 @@ class ItemPage(WikibasePage):
             assert self.id == '-1'
             return
 
+        # we don't want empty titles
+        if not title:
+            raise pywikibot.InvalidTitle("Item's title cannot be empty")
+
         super(ItemPage, self).__init__(site, title, ns=ns)
-
-        # Link.__init__, called from Page.__init__, has cleaned the title
-        # stripping whitespace and uppercasing the first letter according
-        # to the namespace case=first-letter.
-
-        # Validate the title is 'Q' and a positive integer.
-        if not re.match(r'^Q[1-9]\d*$', self._link.title):
-            raise pywikibot.InvalidTitle(
-                u"'%s' is not a valid item page title"
-                % self._link.title)
 
         assert self.id == self._link.title
 
@@ -3798,7 +3980,7 @@ class ItemPage(WikibasePage):
 
         if lazy_loading_id or self._link._text != self.id:
             # If the item is lazy loaded or has been modified,
-            # _link._text is stale.  Removing _link._title
+            # _link._text is stale. Removing _link._title
             # forces Link to re-parse ._text into ._title.
             if hasattr(self._link, '_title'):
                 del self._link._title
@@ -3818,17 +4000,17 @@ class ItemPage(WikibasePage):
         Get the ItemPage for a Page that links to it.
 
         @param page: Page to look for corresponding data item
-        @type  page: pywikibot.Page
+        @type page: pywikibot.Page
         @param lazy_load: Do not raise NoPage if either page or corresponding
                           ItemPage does not exist.
-        @type  lazy_load: bool
+        @type lazy_load: bool
         @rtype: ItemPage
 
         @raise NoPage: There is no corresponding ItemPage for the page
         """
-        if not page.site.has_transcluded_data:
-            raise pywikibot.WikiBaseError(u'%s has no transcluded data'
-                                          % page.site)
+        if not page.site.has_data_repository:
+            raise pywikibot.WikiBaseError('{0} has no data repository'
+                                          ''.format(page.site))
         if not lazy_load and not page.exists():
             raise pywikibot.NoPage(page)
 
@@ -3870,9 +4052,13 @@ class ItemPage(WikibasePage):
                 self.sitelinks[dbname] = self._content[
                     'sitelinks'][dbname]['title']
 
-        data['claims'] = self.claims
         data['sitelinks'] = self.sitelinks
         return data
+
+    @need_version('1.28-wmf.23')
+    def concept_url(self):
+        """Return the full concept URL."""
+        return '{0}{1}'.format(self.site.concept_base_uri, self.id)
 
     def getRedirectTarget(self):
         """Return the redirect target for this page."""
@@ -4022,9 +4208,15 @@ class ItemPage(WikibasePage):
         Merge the item into another item.
 
         @param item: The item to merge into
-        @type item: pywikibot.ItemPage
+        @type item: ItemPage
         """
-        self.repo.mergeItems(fromItem=self, toItem=item, **kwargs)
+        data = self.repo.mergeItems(fromItem=self, toItem=item, **kwargs)
+        if not data.get('success', 0):
+            return
+        self.latest_revision_id = data['from']['lastrevid']
+        item.latest_revision_id = data['to']['lastrevid']
+        if data.get('redirected', 0):
+            self._isredir = True
 
     def set_redirect_target(self, target_page, create=False, force=False,
                             keep_section=False, save=True, **kwargs):
@@ -4073,6 +4265,7 @@ class Property(object):
     """
 
     types = {'wikibase-item': ItemPage,
+             # 'wikibase-property': PropertyPage, must be declared first
              'string': basestring,
              'commonsMedia': FilePage,
              'globe-coordinate': pywikibot.Coordinate,
@@ -4085,6 +4278,7 @@ class Property(object):
              }
 
     value_types = {'wikibase-item': 'wikibase-entityid',
+                   'wikibase-property': 'wikibase-entityid',
                    'commonsMedia': 'string',
                    'url': 'string',
                    'globe-coordinate': 'globecoordinate',
@@ -4092,12 +4286,14 @@ class Property(object):
                    'external-id': 'string',
                    }
 
-    def __init__(self, site, id=None, datatype=None):
+    def __init__(self, site, id, datatype=None):
         """
         Constructor.
 
         @param site: data repository
         @type site: pywikibot.site.DataSite
+        @param id: id of the property
+        @type id: basestring
         @param datatype: datatype of the property;
             if not given, it will be queried via the API
         @type datatype: basestring
@@ -4124,7 +4320,7 @@ class Property(object):
         Return the type of this property.
 
         It returns 'globecoordinate' for type 'globe-coordinate'
-        in order to be backwards compatible.  See
+        in order to be backwards compatible. See
         https://gerrit.wikimedia.org/r/#/c/135405/ for background.
         """
         if self.type == 'globe-coordinate':
@@ -4155,6 +4351,9 @@ class PropertyPage(WikibasePage, Property):
         PropertyPage(DataSite, 'P21')
     """
 
+    entity_type = 'property'
+    title_pattern = r'^P[1-9]\d*$'
+
     def __init__(self, source, title=u""):
         """
         Constructor.
@@ -4164,11 +4363,11 @@ class PropertyPage(WikibasePage, Property):
         @param title: page name of property, like "P##"
         @type title: str
         """
+        if not title:
+            raise pywikibot.InvalidTitle("Property's title cannot be empty")
+
         WikibasePage.__init__(self, source, title,
                               ns=source.property_namespace)
-        if not title or not self.id.startswith('P'):
-            raise pywikibot.InvalidTitle(
-                u"'%s' is not an property page title" % title)
         Property.__init__(self, source, self.id)
 
     def get(self, force=False, *args, **kwargs):
@@ -4183,9 +4382,10 @@ class PropertyPage(WikibasePage, Property):
             raise NotImplementedError(
                 'PropertyPage.get only implements "force".')
 
-        if force or not hasattr(self, '_content'):
-            WikibasePage.get(self, force)
+        data = WikibasePage.get(self, force)
         self._type = self._content['datatype']
+        data['datatype'] = self._content['datatype']
+        return data
 
     def newClaim(self, *args, **kwargs):
         """
@@ -4195,6 +4395,9 @@ class PropertyPage(WikibasePage, Property):
         """
         return Claim(self.site, self.getID(), datatype=self.type,
                      *args, **kwargs)
+
+# Add PropertyPage to the class attribute "types" after its declaration.
+Property.types['wikibase-property'] = PropertyPage
 
 
 class Claim(Property):
@@ -4208,11 +4411,13 @@ class Claim(Property):
     TARGET_CONVERTER = {
         'wikibase-item': lambda value, site:
             ItemPage(site, 'Q' + str(value['numeric-id'])),
+        'wikibase-property': lambda value, site:
+            PropertyPage(site, 'P' + str(value['numeric-id'])),
         'commonsMedia': lambda value, site:
             FilePage(pywikibot.Site('commons', 'commons'), value),
         'globe-coordinate': pywikibot.Coordinate.fromWikibase,
         'time': lambda value, site: pywikibot.WbTime.fromWikibase(value),
-        'quantity': lambda value, site: pywikibot.WbQuantity.fromWikibase(value),
+        'quantity': pywikibot.WbQuantity.fromWikibase,
         'monolingualtext': lambda value, site:
             pywikibot.WbMonolingualText.fromWikibase(value)
     }
@@ -4499,7 +4704,7 @@ class Claim(Property):
 
     def removeSource(self, source, **kwargs):
         """
-        Remove the source.  Calls removeSources().
+        Remove the source. Call removeSources().
 
         @param source: the source to remove
         @type source: pywikibot.Claim
@@ -4536,7 +4741,7 @@ class Claim(Property):
 
     def removeQualifier(self, qualifier, **kwargs):
         """
-        Remove the qualifier.  Calls removeQualifiers().
+        Remove the qualifier. Call removeQualifiers().
 
         @param qualifier: the qualifier to remove
         @type qualifier: Claim
@@ -4561,9 +4766,10 @@ class Claim(Property):
 
         The function checks for:
 
-        - ItemPage ID equality
+        - WikibasePage ID equality
         - WbTime year equality
         - Coordinate equality, regarding precision
+        - WbMonolingualText text equality
         - direct equality
 
         @param value: the value to compare with
@@ -4571,15 +4777,13 @@ class Claim(Property):
             false otherwise
         @rtype: bool
         """
-        if (isinstance(self.target, pywikibot.ItemPage) and
-                isinstance(value, basestring) and
-                self.target.id == value):
-            return True
+        if (isinstance(self.target, WikibasePage) and
+                isinstance(value, basestring)):
+            return self.target.id == value
 
         if (isinstance(self.target, pywikibot.WbTime) and
-                not isinstance(value, pywikibot.WbTime) and
-                self.target.year == int(value)):
-            return True
+                not isinstance(value, pywikibot.WbTime)):
+            return self.target.year == int(value)
 
         if (isinstance(self.target, pywikibot.Coordinate) and
                 isinstance(value, basestring)):
@@ -4597,10 +4801,11 @@ class Claim(Property):
             return (abs(self.target.lat - coord_args[0]) <= precision and
                     abs(self.target.lon - coord_args[1]) <= precision)
 
-        if self.target == value:
-            return True
+        if (isinstance(self.target, pywikibot.WbMonolingualText) and
+                isinstance(value, basestring)):
+            return self.target.text == value
 
-        return False
+        return self.target == value
 
     def has_qualifier(self, qualifier_id, target):
         """
@@ -4628,8 +4833,8 @@ class Claim(Property):
         @return: JSON value
         @rtype: dict
         """
-        if self.type == 'wikibase-item':
-            value = {'entity-type': 'item',
+        if self.type in ('wikibase-item', 'wikibase-property'):
+            value = {'entity-type': self.getTarget().entity_type,
                      'numeric-id': self.getTarget().getID(numeric=True)}
         elif self.type in ('string', 'url', 'math', 'external-id'):
             value = self.getTarget()
@@ -4821,7 +5026,7 @@ class Link(ComparableMixin):
 
     Has the following attributes:
 
-      - site:  The Site object for the wiki linked to
+      - site: The Site object for the wiki linked to
       - namespace: The namespace of the page linked to (int)
       - title: The title of the page linked to (unicode); does not include
         namespace or section
@@ -4899,7 +5104,7 @@ class Link(ComparableMixin):
         # Normalize unicode string to a NFC (composed) format to allow
         # proper string comparisons to strings output from MediaWiki API.
         # Due to Python issue 10254, this is not possible on Python 2.6.6
-        # if the string contains combining characters.  See T102461.
+        # if the string contains combining characters. See T102461.
         if (PYTHON_VERSION == (2, 6, 6) and
                 unicodedata.__name__ != 'unicodedata2' and
                 any(unicodedata.combining(c) for c in t)):
@@ -4919,8 +5124,7 @@ class Link(ComparableMixin):
         # Replace underscores by spaces
         t = t.replace(u"_", u" ")
         # replace multiple spaces with a single space
-        while u"  " in t:
-            t = t.replace(u"  ", u" ")
+        t = re.sub(' {2,}', ' ', t)
         # Strip spaces at both ends
         t = t.strip()
         # Remove left-to-right and right-to-left markers.
@@ -5365,7 +5569,7 @@ def html2unicode(text, ignore=None):
     # This regular expression will match any decimal and hexadecimal entity and
     # also entities that might be named entities.
     entityR = re.compile(
-        r'&(?:amp;)?(#(?P<decimal>\d+)|#x(?P<hex>[0-9a-fA-F]+)|(?P<name>[A-Za-z]+));')
+        r'&(#(?P<decimal>\d+)|#x(?P<hex>[0-9a-fA-F]+)|(?P<name>[A-Za-z]+));')
     # These characters are Html-illegal, but sadly you *can* find some of
     # these and converting them to chr(decimal) is unsuitable
     convertIllegalHtmlEntities = {
@@ -5399,7 +5603,8 @@ def html2unicode(text, ignore=None):
     }
     # ensuring that illegal &#129; &#141; and &#157, which have no known values,
     # don't get converted to chr(129), chr(141) or chr(157)
-    ignore = set(ignore) | set([129, 141, 157])
+    ignore = (set(map(lambda x: convertIllegalHtmlEntities.get(x, x), ignore)) |
+              set([129, 141, 157]))
 
     def handle_entity(match):
         if match.group('decimal'):
@@ -5413,10 +5618,10 @@ def html2unicode(text, ignore=None):
                 unicodeCodepoint = htmlentitydefs.name2codepoint[name]
             else:
                 unicodeCodepoint = False
-        try:
+
+        if unicodeCodepoint in convertIllegalHtmlEntities:
             unicodeCodepoint = convertIllegalHtmlEntities[unicodeCodepoint]
-        except KeyError:
-            pass
+
         if unicodeCodepoint and unicodeCodepoint not in ignore:
             if unicodeCodepoint > sys.maxunicode:
                 # solve narrow Python 2 build exception (UTF-16)

@@ -1,4 +1,4 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Tests for the user interface."""
 #
 # (C) Pywikibot team, 2008-2016
@@ -218,6 +218,7 @@ class UITestCase(unittest.TestCase):
     net = False
 
     def setUp(self):
+        super(UITestCase, self).setUp()
         patch()
 
         pywikibot.config.colorized_output = True
@@ -226,6 +227,7 @@ class UITestCase(unittest.TestCase):
         pywikibot.ui.encoding = 'utf-8'
 
     def tearDown(self):
+        super(UITestCase, self).tearDown()
         unpatch()
 
     def _encode(self, string, encoding='utf-8'):
@@ -689,6 +691,7 @@ class TestWindowsTerminalUnicodeArguments(WindowsTerminalTestCase):
         self.assertEqual(lines, [u'Alpha', u'Bετα', u'Гамма', u'دلتا', u''])
 
 
+# TODO: add tests for background colors.
 class FakeUITest(TestCase):
 
     """Test case to allow doing uncolorized general UI tests."""
@@ -864,7 +867,7 @@ class FakeWin32UncolorizedTest(FakeWin32Test):
         self.stream._hConsole = None
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':  # pragma: no cover
     try:
         try:
             unittest.main()

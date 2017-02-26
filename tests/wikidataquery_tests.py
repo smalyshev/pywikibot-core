@@ -1,4 +1,4 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Test cases for the WikidataQuery query syntax and API."""
 #
 # (C) Pywikibot team, 2014
@@ -286,7 +286,7 @@ class TestApiSlowFunctions(TestCase):
         self.assertLess(t2 - t1, 0.2)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     try:
         unittest.main()
     except SystemExit:

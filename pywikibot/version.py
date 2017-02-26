@@ -1,4 +1,4 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Module to determine the pywikibot version (tag, revision and date)."""
 #
 # (C) Merlijn 'valhallasw' van Deen, 2007-2014
@@ -483,12 +483,11 @@ def package_versions(modules=None, builtins=False, standard_lib=None):
 
     std_lib_dir = get_python_lib(standard_lib=True)
 
-    root_packages = set([key.split('.')[0]
-                         for key in modules])
+    root_packages = set(key.split('.')[0] for key in modules)
 
-    builtin_packages = set([name.split('.')[0] for name in root_packages
-                            if name in sys.builtin_module_names or
-                            '_' + name in sys.builtin_module_names])
+    builtin_packages = set(name.split('.')[0] for name in root_packages
+                           if name in sys.builtin_module_names or
+                           '_' + name in sys.builtin_module_names)
 
     # Improve performance by removing builtins from the list if possible.
     if builtins is False:

@@ -17,7 +17,9 @@ Command line options:
 
 -subst       Resolves the template by putting its text directly into the
              article. This is done by changing {{...}} or {{msg:...}} into
-             {{subst:...}}
+             {{subst:...}}.
+             Substitution is not available inside <ref>...</ref>,
+             <gallery>...</gallery> and <poem>...</poem> tags.
 
 -assubst     Replaces the first argument as old template with the second
              argument as new template but substitutes it like -subst does.
@@ -39,15 +41,15 @@ Command line options:
              If this parameter is missed, all edits are checked but this is
              restricted to the last 100 edits.
 
--summary:    Lets you pick a custom edit summary.  Use quotes if edit summary
+-summary:    Lets you pick a custom edit summary. Use quotes if edit summary
              contains spaces.
 
 -always      Don't bother asking to confirm any of the changes, Just Do It.
 
--addcat:     Appends the given category to every page that is edited.  This is
+-addcat:     Appends the given category to every page that is edited. This is
              useful when a category is being broken out from a template
-             parameter or when templates are being upmerged but more information
-             must be preserved.
+             parameter or when templates are being upmerged but more
+             information must be preserved.
 
 other:       First argument is the old template name, second one is the new
              name.
@@ -179,11 +181,11 @@ class TemplateRobot(ReplaceBot):
         Constructor.
 
         @param generator: the pages to work on
-        @type  generator: iterable
+        @type generator: iterable
         @param templates: a dictionary which maps old template names to
             their replacements. If remove or subst is True, it maps the
             names of the templates that should be removed/resolved to None.
-        @type  templates: dict
+        @type templates: dict
         """
         self.availableOptions.update({
             'subst': False,
@@ -221,11 +223,11 @@ class TemplateRobot(ReplaceBot):
             if self.getOption('subst') and self.getOption('remove'):
                 replacements.append((templateRegex,
                                      r'{{subst:%s\g<parameters>}}' % new))
-                exceptions['inside-tags'] = ['ref', 'gallery']
+                exceptions['inside-tags'] = ['ref', 'gallery', 'poem']
             elif self.getOption('subst'):
                 replacements.append((templateRegex,
                                      r'{{subst:%s\g<parameters>}}' % old))
-                exceptions['inside-tags'] = ['ref', 'gallery']
+                exceptions['inside-tags'] = ['ref', 'gallery', 'poem']
             elif self.getOption('remove'):
                 replacements.append((templateRegex, ''))
             else:
@@ -330,7 +332,7 @@ def main(*args):
         builder = textlib._MultiTemplateMatchBuilder(site)
         predicate = builder.search_any_predicate(oldTemplates)
 
-        gen = XmlDumpTemplatePageGenerator(
+        gen = XMLDumpPageGenerator(
             xmlfilename, site=site, text_predicate=predicate)
     else:
         gen = genFactory.getCombinedGenerator()
@@ -353,7 +355,7 @@ def main(*args):
 
     preloadingGen = pagegenerators.PreloadingGenerator(gen)
 
-    bot = TemplateRobot(preloadingGen, templates, **options)
+    bot = TemplateRobot(preloadingGen, templates, site=site, **options)
     bot.run()
 
 if __name__ == "__main__":

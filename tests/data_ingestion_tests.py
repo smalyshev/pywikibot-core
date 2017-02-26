@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Unit tests for data_ingestion.py script."""
 #
 # (C) Pywikibot team, 2012-2015
@@ -124,5 +124,5 @@ class TestDataIngestionBot(ScriptMainTestCase):
             '-page:User:John_Vandenberg/data_ingestion_test_template')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':  # pragma: no cover
     unittest.main()

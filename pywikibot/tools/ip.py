@@ -1,4 +1,4 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """IP address tools module."""
 #
 # (C) Pywikibot team, 2015
@@ -33,7 +33,7 @@ if not ip_address or sys.version_info[0] < 3:
     else:
         _ipaddr_version = StrictVersion(_ipaddr_version)
         if _ipaddr_version >= StrictVersion('2.1.10'):
-            from ipaddr import IPAddress as ip_address
+            from ipaddr import IPAddress as ip_address  # flake8: disable=N813
         else:
             _ipaddr_e = ImportError('ipaddr %s is broken.' % _ipaddr_version)
 
@@ -97,7 +97,7 @@ def is_IP(IP):
     """
     Verify the IP address provided is valid.
 
-    No logging is performed.  Use ip_address instead to catch errors.
+    No logging is performed. Use ip_address instead to catch errors.
 
     @param IP: IP address
     @type IP: unicode

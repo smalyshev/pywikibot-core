@@ -1,7 +1,7 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Test cosmetic_changes module."""
 #
-# (C) Pywikibot team, 2015-2016
+# (C) Pywikibot team, 2015-2017
 #
 # Distributed under the terms of the MIT license.
 #
@@ -39,14 +39,18 @@ class TestDryCosmeticChanges(TestCosmeticChanges):
         """Test fixSelfInterwiki method."""
         self.assertEqual('[[Foo bar]]',
                          self.cct.fixSelfInterwiki('[[de:Foo bar]]'))
+        self.assertEqual('[[Foo bar]]',
+                         self.cct.fixSelfInterwiki('[[:de: Foo bar]]'))
+        self.assertEqual('[[Foo bar|Bar baz]]',
+                         self.cct.fixSelfInterwiki('[[ de: Foo bar|Bar baz]]'))
         self.assertEqual('[[en:Foo bar]]',
                          self.cct.fixSelfInterwiki('[[en:Foo bar]]'))
 
     def test_standardizePageFooter(self):
         """Test standardizePageFooter method."""
-        self.assertEqual('Foo\n{{link fa}}\n\n[[Category:Foo]]',
+        self.assertEqual('Foo\n{{any template}}\n\n[[Category:Foo]]',
                          self.cct.standardizePageFooter(
-                             'Foo [[category:foo]] {{link fa}}'))
+                             'Foo\n[[category:foo]]\n{{any template}}'))
 
     def test_resolveHtmlEntities(self):
         """Test resolveHtmlEntities method."""
@@ -243,6 +247,8 @@ class TestLiveCosmeticChanges(TestCosmeticChanges):
 
     def test_cleanUpLinks_pipes(self):
         """Test cleanUpLinks method."""
+        self.assertEqual('[[No|no change]]',
+                         self.cct.cleanUpLinks('[[no|no change]]'))
         self.assertEqual('[[title]]',
                          self.cct.cleanUpLinks('[[title|title]]'))
         self.assertEqual('[[title]]',
@@ -253,10 +259,6 @@ class TestLiveCosmeticChanges(TestCosmeticChanges):
                          self.cct.cleanUpLinks('[[sand|sand]]box'))
         self.assertEqual('[[Sand|demospace]]',
                          self.cct.cleanUpLinks('[[sand|demo]]space'))
-
-    @unittest.expectedFailure
-    def test_cleanUpLinks_pipes_fail(self):
-        """Test cleanUpLinks method."""
         self.assertEqual('[[Title]]',
                          self.cct.cleanUpLinks('[[title|Title]]'))
         self.assertEqual('[[Sand]]box',
@@ -300,15 +302,49 @@ class TestCosmeticChangesPersian(TestCosmeticChanges):
     family = 'wikipedia'
     code = 'fa'
 
-    def test_fixArabicLetters(self):
-        """Test fixArabicLetters."""
+    def test_fixArabicLetters_comma(self):
+        """Test fixArabicLetters comma replacements."""
+        self.assertEqual(self.cct.fixArabicLetters(','), '،')
         self.assertEqual(self.cct.fixArabicLetters('A,b,ا,۴,'),
                          'A,b،ا،۴،')
+
+    def test_fixArabicLetters_comma_skip(self):
+        """Test fixArabicLetters Latin comma not replaced."""
+        self.assertEqual(self.cct.fixArabicLetters('a", b'), 'a", b')
+        self.assertEqual(self.cct.fixArabicLetters('a, "b'), 'a, "b')
+        self.assertEqual(self.cct.fixArabicLetters('a", "b'), 'a", "b')
+        # spaces are not required
+        self.assertEqual(self.cct.fixArabicLetters('a",b'), 'a",b')
+        self.assertEqual(self.cct.fixArabicLetters('a,"b'), 'a,"b')
+        self.assertEqual(self.cct.fixArabicLetters('a","b'), 'a","b')
+        # quotes are a 'non-Farsi' character; additional non-Farsi not needed
+        self.assertEqual(self.cct.fixArabicLetters('",b'), '",b')
+        self.assertEqual(self.cct.fixArabicLetters('a,"'), 'a,"')
+        self.assertEqual(self.cct.fixArabicLetters('","'), '","')
+
+        # A single quotation is a 'non-Farsi' character
+        self.assertEqual(self.cct.fixArabicLetters("',b"), "',b")
+        self.assertEqual(self.cct.fixArabicLetters("a,'"), "a,'")
+        self.assertEqual(self.cct.fixArabicLetters("','"), "','")
+
+        # A space is a 'non-Farsi' character
+        self.assertEqual(self.cct.fixArabicLetters('a", ۴'), 'a", ۴')
+        self.assertEqual(self.cct.fixArabicLetters(' , '), ' , ')
+
+    def test_fixArabicLetters_letters(self):
+        """Test fixArabicLetters letter replacements."""
+        self.assertEqual(self.cct.fixArabicLetters('ك'),
+                         'ک')
+        self.assertEqual(self.cct.fixArabicLetters('ي'),
+                         'ی')
+        self.assertEqual(self.cct.fixArabicLetters('ى'),
+                         'ی')
         self.assertEqual(self.cct.fixArabicLetters('كي'),
                          'کی')
+
         # Once numbering fixes are enabled we can add tests.
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     try:
         unittest.main()
     except SystemExit:

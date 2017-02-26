@@ -1,5 +1,10 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Family module for Wikibooks."""
+#
+# (C) Pywikibot team, 2005-2016
+#
+# Distributed under the terms of the MIT license.
+#
 from __future__ import absolute_import, unicode_literals
 
 from pywikibot import family
@@ -21,6 +26,8 @@ class Family(family.SubdomainFamily, family.WikimediaFamily):
         'ak',
         # https://als.wikipedia.org/wiki/Wikipedia:Stammtisch/Archiv_2008-1#Afterwards.2C_closure_and_deletion_of_Wiktionary.2C_Wikibooks_and_Wikiquote_sites
         'als',
+        # https://meta.wikimedia.org/wiki/Proposals_for_closing_projects/Closure_of_Old_English_Wikibooks_2
+        'ang',
         # https://meta.wikimedia.org/wiki/Proposals_for_closing_projects/Closure_of_Assamese_Wikibooks
         'as',
         # https://meta.wikimedia.org/wiki/Proposals_for_closing_projects/Closure_of_Asturianu_Wikibooks
@@ -49,6 +56,8 @@ class Family(family.SubdomainFamily, family.WikimediaFamily):
         'gu',
         # https://meta.wikimedia.org/wiki/Proposals_for_closing_projects/Closure_of_Kannada_Wikibooks
         'kn',
+        # https://meta.wikimedia.org/wiki/Proposals_for_closing_projects/Closure_of_Interlingue_Wikibooks
+        'ie',
         # https://meta.wikimedia.org/wiki/Proposals_for_closing_projects/Closure_of_Kashmiri_Wikibooks
         'ks',
         # https://meta.wikimedia.org/wiki/Proposals_for_closing_projects/Closure_of_L%C3%ABtzebuergesch_Wikibooks
@@ -87,6 +96,8 @@ class Family(family.SubdomainFamily, family.WikimediaFamily):
         'tk',
         # https://meta.wikimedia.org/wiki/Proposals_for_closing_projects/Closure_of_Uyghur_Wikibooks
         'ug',
+        # https://meta.wikimedia.org/wiki/Proposals_for_closing_projects/Closure_of_Uzbek_Wikibooks_(2)
+        'uz',
         # https://meta.wikimedia.org/wiki/Proposals_for_closing_projects/Closure_of_Volap%C3%BCk_Wikibooks
         'vo',
         # https://meta.wikimedia.org/wiki/Proposals_for_closing_projects/Closure_of_Walon_Wikibooks
@@ -97,6 +108,8 @@ class Family(family.SubdomainFamily, family.WikimediaFamily):
         'yo',
         # https://meta.wikimedia.org/wiki/Proposals_for_closing_projects/Closure_of_Zhuang_Wikibooks
         'za',
+        # https://meta.wikimedia.org/wiki/Proposals_for_closing_projects/Closure_of_Min_Nan_Wikibooks
+        'zh-min-nan',
         # https://meta.wikimedia.org/wiki/Proposals_for_closing_projects/Closure_of_Zulu_Wikibooks
         'zu',
     ]
@@ -108,13 +121,13 @@ class Family(family.SubdomainFamily, family.WikimediaFamily):
     def __init__(self):
         """Constructor."""
         self.languages_by_size = [
-            'en', 'de', 'hu', 'fr', 'ja', 'it', 'es', 'pt', 'nl', 'pl', 'vi',
-            'he', 'ca', 'id', 'fi', 'sq', 'fa', 'ru', 'cs', 'zh', 'az', 'sv',
-            'th', 'hr', 'tr', 'sr', 'ar', 'no', 'ko', 'gl', 'da', 'ta', 'ro',
-            'mk', 'tl', 'is', 'uk', 'ka', 'lt', 'tt', 'sa', 'eo', 'sk', 'bg',
-            'el', 'hy', 'si', 'ms', 'sl', 'bn', 'hi', 'li', 'la', 'ur', 'ml',
-            'ang', 'ia', 'cv', 'et', 'km', 'mr', 'eu', 'oc', 'kk', 'ne', 'fy',
-            'pa', 'ie', 'te', 'af', 'tg', 'ku', 'ky', 'bs', 'be', 'mg', 'cy',
+            'en', 'hu', 'de', 'fr', 'ja', 'it', 'es', 'pt', 'nl', 'vi', 'pl',
+            'he', 'ca', 'id', 'fi', 'sq', 'fa', 'ru', 'th', 'cs', 'zh', 'az',
+            'sv', 'hr', 'tr', 'sr', 'ar', 'ko', 'no', 'da', 'gl', 'ta', 'ro',
+            'tl', 'mk', 'is', 'uk', 'ka', 'lt', 'tt', 'sa', 'eo', 'sk', 'bg',
+            'el', 'bn', 'hi', 'hy', 'si', 'ms', 'sl', 'ur', 'li', 'la', 'ml',
+            'km', 'ang', 'ia', 'cv', 'et', 'mr', 'eu', 'oc', 'kk', 'ne', 'pa',
+            'fy', 'ie', 'te', 'af', 'tg', 'ku', 'ky', 'bs', 'be', 'mg', 'cy',
             'zh-min-nan', 'uz',
         ]
 
@@ -123,7 +136,7 @@ class Family(family.SubdomainFamily, family.WikimediaFamily):
         # Global bot allowed languages on
         # https://meta.wikimedia.org/wiki/Bot_policy/Implementation#Current_implementation
         self.cross_allowed = [
-            'af', 'ang', 'ca', 'fa', 'fy', 'it', 'nl', 'ru', 'th', 'zh',
+            'af', 'ca', 'fa', 'fy', 'gl', 'it', 'nl', 'ru', 'th', 'zh',
         ]
 
         # Subpages for documentation.
@@ -132,4 +145,5 @@ class Family(family.SubdomainFamily, family.WikimediaFamily):
             '_default': ((u'/doc', ),
                          ['en']
                          ),
+            'es': ('/uso', '/doc'),
         }

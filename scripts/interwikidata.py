@@ -14,12 +14,14 @@ These command line parameters can be used to specify which pages to work on:
 
 Furthermore, the following command line parameters are supported:
 
--clean              Clean pages.
+-clean            Clean pages.
 
--create             Create items only.
+-create           Create items only.
+
+-summary:         Use your own edit summary for cleaning the page.
 """
 
-# (C) Pywikibot team, 2015
+# (C) Pywikibot team, 2015-2016
 #
 # Distributed under the terms of the MIT license.
 #
@@ -36,37 +38,37 @@ from pywikibot.bot import ExistingPageBot, SingleSiteBot, suggest_help
 # This is required for the text that is shown when you run this script
 # with the parameter -help.
 docuReplacements = {
-    '&params;':     pagegenerators.parameterHelp,
+    '&params;': pagegenerators.parameterHelp,
 }
 
 # Allowed namespaces. main, project, template, category
 namespaces = [0, 4, 10, 14]
 
-# TODO: Some templates on pages, like csd and afd templates,
-# should cause the bot to skip the page
+# TODO: Some templates on pages, like csd, inuse and afd templates,
+# should cause the bot to skip the page, see T134497
 
 
 class IWBot(ExistingPageBot, SingleSiteBot):
 
     """The bot for interwiki."""
 
-    def __init__(self, generator, site, **kwargs):
+    def __init__(self, **kwargs):
         """Construct the bot."""
         self.availableOptions.update({
             'clean': False,
             'create': False,
             'summary': None,
-            'ignore_ns': False
+            'ignore_ns': False,  # used by interwikidata_tests only
         })
-        super(IWBot, self).__init__(generator=generator, site=site, **kwargs)
+        super(IWBot, self).__init__(**kwargs)
         if not self.site.has_data_repository:
             raise ValueError('{site} does not have a data repository, '
                              'use interwiki.py instead.'.format(
                                  site=self.site))
-        self.repo = site.data_repository()
+        self.repo = self.site.data_repository()
         if not self.getOption('summary'):
             self.options['summary'] = pywikibot.i18n.twtranslate(
-                site, 'interwikidata-clean-summary', fallback=True)
+                self.site, 'interwikidata-clean-summary')
 
     def treat_page(self):
         """Check page."""
@@ -180,31 +182,25 @@ def main(*args):
     @param args: command line arguments
     @type args: list of unicode
     """
-    generator = None
-    clean = False
-    create = False
-    always = False
     local_args = pywikibot.handle_args(args)
     genFactory = pagegenerators.GeneratorFactory()
     options = {}
     for arg in local_args:
-        if arg == '-clean':
-            clean = True
-        elif arg == '-create':
-            create = True
-        elif arg.startswith('-always'):
-            always = True
+        if genFactory.handleArg(arg):
+            continue
+        option, sep, value = arg.partition(':')
+        option = option[1:] if option.startswith('-') else None
+        if option == 'summary':
+            options[option] = value
         else:
-            genFactory.handleArg(arg)
+            options[option] = True
 
     site = pywikibot.Site()
 
-    options = {'always': always, 'create': create, 'clean': clean}
-    if not generator:
-        generator = genFactory.getCombinedGenerator()
+    generator = genFactory.getCombinedGenerator()
     if generator:
         generator = pagegenerators.PreloadingGenerator(generator)
-        bot = IWBot(generator, site, **options)
+        bot = IWBot(generator=generator, site=site, **options)
         bot.run()
     else:
         suggest_help(missing_generator=True)

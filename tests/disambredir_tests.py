@@ -1,4 +1,4 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """
 DisambigurationRedirectBot test.
 
@@ -155,7 +155,7 @@ class TestDisambigurationRedirectBot(FakeSaveBotTestCase, TWNBotTestCase):
                          '[[Main Page|Label]]\n')
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     try:
         unittest.main()
     except SystemExit:

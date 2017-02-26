@@ -1,4 +1,4 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Tests for scripts/interwikidata.py."""
 #
 # (C) Pywikibot team, 2015
@@ -21,10 +21,6 @@ from tests.aspects import unittest, SiteAttributeTestCase
 class DummyBot(interwikidata.IWBot):
 
     """A dummy bot to prevent editing in production wikis."""
-
-    def __init__(self, *args, **kwargs):
-        """Initiate the class."""
-        super(DummyBot, self).__init__(*args, **kwargs)
 
     def put_current(self):
         """Prevent editing."""
@@ -102,7 +98,7 @@ class TestInterwikidataBot(SiteAttributeTestCase):
                           '-family:wiktionary')
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     try:
         unittest.main()
     except SystemExit:

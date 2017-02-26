@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 r"""
 This script transfers pages from a source wiki to a target wiki.
 
@@ -22,8 +22,8 @@ Pages to work on can be specified using any of:
 
 Example commands:
 
-Transfer all pages in category "Query service" from the English Wikipedia to the
-Arabic Wiktionary, adding "Wiktionary:Import enwp/" as prefix:
+Transfer all pages in category "Query service" from the English Wikipedia to
+the Arabic Wiktionary, adding "Wiktionary:Import enwp/" as prefix:
 
     python pwb.py transferbot -family:wikipedia -lang:en -cat:"Query service" \
         -tofamily:wiktionary -tolang:ar -prefix:"Wiktionary:Import enwp/"

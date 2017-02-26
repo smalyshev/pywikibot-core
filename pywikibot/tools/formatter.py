@@ -1,7 +1,7 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Module containing various formatting related utilities."""
 #
-# (C) Pywikibot team, 2015
+# (C) Pywikibot team, 2015-2016
 #
 # Distributed under the terms of the MIT license.
 #
@@ -68,6 +68,9 @@ class _ColorFormatter(Formatter):
     """Special string formatter which skips colors."""
 
     colors = set(colors)
+    # Dot.product of colors to create all possible combinations of foreground
+    # and background colors.
+    colors |= set('%s;%s' % (c1, c2) for c1 in colors for c2 in colors)
 
     def __init__(self):
         """Create new instance and store the stack depth."""

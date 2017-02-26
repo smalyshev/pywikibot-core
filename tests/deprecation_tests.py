@@ -1,7 +1,7 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Tests for deprecation tools."""
 #
-# (C) Pywikibot team, 2014
+# (C) Pywikibot team, 2014-2016
 #
 # Distributed under the terms of the MIT license.
 #
@@ -802,7 +802,7 @@ class DeprecatorTestCase(DeprecationTestCase):
             __name__ + '.DeprecatedMethodClass.deprecated_instance_method_and_arg2')
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     try:
         unittest.main()
     except SystemExit:

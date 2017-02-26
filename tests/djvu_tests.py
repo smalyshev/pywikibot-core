@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Unit tests for djvutext.py script."""
 
 #
@@ -78,7 +78,7 @@ class TestDjVuFile(TestCase):
         self.assertFalse(djvu.has_text())
         self.assertRaises(ValueError, djvu.get_page, 100)
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     try:
         unittest.main()
     except SystemExit:

@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Test tools package alone which don't fit into other tests."""
 #
 # (C) Pywikibot team, 2016
@@ -17,12 +17,20 @@ import subprocess
 import tempfile
 import warnings
 
+try:
+    import mock
+except ImportError as e:
+    mock = e
+
 from pywikibot import tools
+from pywikibot.tools import classproperty
 
 from tests import join_xml_data_path
+
 from tests.aspects import (
     unittest, require_modules, DeprecationTestCase, TestCase, MetaTestCaseClass
 )
+
 from tests.utils import expected_failure_if, add_metaclass
 
 
@@ -66,7 +74,8 @@ class ContextManagerWrapperTestCase(TestCase):
         """Check that the wrapper permits exceptions."""
         wrapper = tools.ContextManagerWrapper(self.DummyClass())
         self.assertFalse(wrapper.closed)
-        with self.assertRaises(ZeroDivisionError):
+        with self.assertRaisesRegex(ZeroDivisionError,
+                                    '(integer division or modulo by zero|division by zero)'):
             with wrapper:
                 1 / 0
         self.assertTrue(wrapper.closed)
@@ -125,9 +134,14 @@ class OpenArchiveTestCase(TestCase):
     def test_open_archive_without_bz2(self):
         """Test open_archive when bz2 and bz2file are not available."""
         old_bz2 = tools.bz2
+        BZ2_IMPORT_ERROR = ('This is a fake exception message that is '
+                            'used when bz2 and bz2file is not importable')
         try:
-            tools.bz2 = ImportError()
-            self.assertRaises(ImportError, self._get_content, self.base_file + '.bz2')
+            tools.bz2 = ImportError(BZ2_IMPORT_ERROR)
+            self.assertRaisesRegex(ImportError,
+                                   BZ2_IMPORT_ERROR,
+                                   self._get_content,
+                                   self.base_file + '.bz2')
         finally:
             tools.bz2 = old_bz2
 
@@ -137,13 +151,17 @@ class OpenArchiveTestCase(TestCase):
 
     def test_open_archive_7z(self):
         """Test open_archive with 7za if installed."""
+        FAILED_TO_OPEN_7ZA = 'Unexpected STDERR output from 7za '
         try:
             subprocess.Popen(['7za'], stdout=subprocess.PIPE).stdout.close()
         except OSError:
             raise unittest.SkipTest('7za not installed')
         self.assertEqual(self._get_content(self.base_file + '.7z'), self.original_content)
-        self.assertRaises(OSError, self._get_content, self.base_file + '_invalid.7z',
-                          use_extension=True)
+        self.assertRaisesRegex(OSError,
+                               FAILED_TO_OPEN_7ZA,
+                               self._get_content,
+                               self.base_file + '_invalid.7z',
+                               use_extension=True)
 
 
 class OpenCompressedTestCase(OpenArchiveTestCase, DeprecationTestCase):
@@ -194,14 +212,26 @@ class OpenArchiveWriteTestCase(TestCase):
 
     def test_invalid_modes(self):
         """Test various invalid mode configurations."""
-        self.assertRaises(ValueError, tools.open_archive,
-                          '/dev/null', 'ra')  # two modes besides
-        self.assertRaises(ValueError, tools.open_archive,
-                          '/dev/null', 'rt')  # text mode
-        self.assertRaises(ValueError, tools.open_archive,
-                          '/dev/null', 'br')  # binary at front
-        self.assertRaises(ValueError, tools.open_archive,
-                          '/dev/null', 'wb', False)  # writing without extension
+        INVALID_MODE_RA = 'Invalid mode: "ra"'
+        INVALID_MODE_RT = 'Invalid mode: "rt"'
+        INVALID_MODE_BR = 'Invalid mode: "br"'
+        MN_DETECTION_ONLY = 'Magic number detection only when reading'
+        self.assertRaisesRegex(ValueError,
+                               INVALID_MODE_RA,
+                               tools.open_archive,
+                               '/dev/null', 'ra')  # two modes besides
+        self.assertRaisesRegex(ValueError,
+                               INVALID_MODE_RT,
+                               tools.open_archive,
+                               '/dev/null', 'rt')  # text mode
+        self.assertRaisesRegex(ValueError,
+                               INVALID_MODE_BR,
+                               tools.open_archive,
+                               '/dev/null', 'br')  # binary at front
+        self.assertRaisesRegex(ValueError,
+                               MN_DETECTION_ONLY,
+                               tools.open_archive,
+                               '/dev/null', 'wb', False)  # writing without extension
 
     def test_binary_mode(self):
         """Test that it uses binary mode."""
@@ -222,8 +252,12 @@ class OpenArchiveWriteTestCase(TestCase):
 
     def test_write_archive_7z(self):
         """Test writing an archive as a 7z archive."""
-        self.assertRaises(NotImplementedError, tools.open_archive,
-                          '/dev/null.7z', mode='wb')
+        FAILED_TO_WRITE_7Z = 'It is not possible to write a 7z file.'
+        self.assertRaisesRegex(NotImplementedError,
+                               FAILED_TO_WRITE_7Z,
+                               tools.open_archive,
+                               '/dev/null.7z',
+                               mode='wb')
 
 
 class MergeUniqueDicts(TestCase):
@@ -339,7 +373,10 @@ class TestIsSliceWithEllipsis(TestCase):
 
     def test_accept_only_keyword_marker(self):
         """Test that the only kwargs accepted is 'marker'."""
-        self.assertRaises(TypeError, tools.islice_with_ellipsis(self.it, 1, t=''))
+        GENERATOR_NOT_CALLABLE = "'generator' object is not callable"
+        self.assertRaisesRegex(TypeError,
+                               GENERATOR_NOT_CALLABLE,
+                               tools.islice_with_ellipsis(self.it, 1, t=''))
 
 
 def passthrough(x):
@@ -675,7 +712,121 @@ class TestPythonArgSpec(TestArgSpec):
             return inspect.getargspec(method)
 
 
-if __name__ == '__main__':
+@require_modules('mock')
+class TestFileModeChecker(TestCase):
+
+    """Test parsing password files."""
+
+    net = False
+
+    def patch(self, name):
+        """Patch up <name> in self.setUp."""
+        patcher = mock.patch(name)
+        self.addCleanup(patcher.stop)
+        return patcher.start()
+
+    def setUp(self):
+        """Patch a variety of dependencies."""
+        super(TestFileModeChecker, self).setUp()
+        self.stat = self.patch('os.stat')
+        self.chmod = self.patch('os.chmod')
+        self.file = '~FakeFile'
+
+    def test_auto_chmod_for_dir(self):
+        """Do not chmod files that have mode private_files_permission."""
+        self.stat.return_value.st_mode = 0o040600  # dir
+        tools.file_mode_checker(self.file, mode=0o600)
+        self.stat.assert_called_with(self.file)
+        self.assertFalse(self.chmod.called)
+
+    def test_auto_chmod_OK(self):
+        """Do not chmod files that have mode private_files_permission."""
+        self.stat.return_value.st_mode = 0o100600  # regular file
+        tools.file_mode_checker(self.file, mode=0o600)
+        self.stat.assert_called_with(self.file)
+        self.assertFalse(self.chmod.called)
+
+    def test_auto_chmod_not_OK(self):
+        """Chmod files that do not have mode private_files_permission."""
+        self.stat.return_value.st_mode = 0o100644  # regular file
+        tools.file_mode_checker(self.file, mode=0o600)
+        self.stat.assert_called_with(self.file)
+        self.chmod.assert_called_once_with(self.file, 0o600)
+
+
+class TestFileShaCalculator(TestCase):
+
+    """Test calculator of sha of a file."""
+
+    net = False
+
+    filename = join_xml_data_path('article-pear-0.10.xml')
+
+    def setUp(self):
+        """Setup tests."""
+        super(TestFileShaCalculator, self).setUp()
+
+    def test_md5_complete_calculation(self):
+        """"Test md5 of complete file."""
+        res = tools.compute_file_hash(self.filename, sha='md5')
+        self.assertEqual(res, '5d7265e290e6733e1e2020630262a6f3')
+
+    def test_md5_partial_calculation(self):
+        """"Test md5 of partial file (1024 bytes)."""
+        res = tools.compute_file_hash(self.filename, sha='md5',
+                                      bytes_to_read=1024)
+        self.assertEqual(res, 'edf6e1accead082b6b831a0a600704bc')
+
+    def test_sha1_complete_calculation(self):
+        """"Test sha1 of complete file."""
+        res = tools.compute_file_hash(self.filename, sha='sha1')
+        self.assertEqual(res, '1c12696e1119493a625aa818a35c41916ce32d0c')
+
+    def test_sha1_partial_calculation(self):
+        """"Test sha1 of partial file (1024 bytes)."""
+        res = tools.compute_file_hash(self.filename, sha='sha1',
+                                      bytes_to_read=1024)
+        self.assertEqual(res, 'e56fa7bd5cfdf6bb7e2d8649dd9216c03e7271e6')
+
+    def test_sha224_complete_calculation(self):
+        """"Test sha224 of complete file."""
+        res = tools.compute_file_hash(self.filename, sha='sha224')
+        self.assertEqual(
+            res, '3d350d9d9eca074bd299cb5ffe1b325a9f589b2bcd7ba1c033ab4d33')
+
+    def test_sha224_partial_calculation(self):
+        """"Test sha224 of partial file (1024 bytes)."""
+        res = tools.compute_file_hash(self.filename, sha='sha224',
+                                      bytes_to_read=1024)
+        self.assertEqual(
+            res, 'affa8cb79656a9b6244a079f8af91c9271e382aa9d5aa412b599e169')
+
+
+class Foo(object):
+
+    """Test class to verify classproperty decorator."""
+
+    _bar = 'baz'
+
+    @classproperty
+    def bar(cls):  # flake8: disable=N805
+        """Class property method."""
+        return cls._bar
+
+
+class TestClassProperty(TestCase):
+
+    """Test classproperty decorator."""
+
+    net = False
+
+    def test_classproperty(self):
+        """Test for classproperty decorator."""
+        self.assertEqual(Foo.bar, 'baz')
+        self.assertEqual(Foo.bar, Foo._bar)
+
+
+if __name__ == '__main__':  # pragma: no cover
     try:
         unittest.main()
     except SystemExit:

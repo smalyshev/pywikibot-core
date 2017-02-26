@@ -1,4 +1,4 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Tests for fixes module."""
 #
 # (C) Pywikibot team, 2015
@@ -46,7 +46,7 @@ class TestFixes(TestCase):
         self.assertIs(fixes.fixes, old_fixes)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     try:
         unittest.main()
     except SystemExit:

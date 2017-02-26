@@ -1,7 +1,7 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """The initialization file for the Pywikibot framework."""
 #
-# (C) Pywikibot team, 2008-2016
+# (C) Pywikibot team, 2008-2017
 #
 # Distributed under the terms of the MIT license.
 #
@@ -23,6 +23,7 @@ from decimal import Decimal
 if sys.version_info[0] > 2:
     from queue import Queue
     long = int
+    basestring = str
 else:
     from Queue import Queue
 
@@ -70,6 +71,7 @@ from pywikibot.tools import (
     deprecated as __deprecated,
     deprecate_arg as __deprecate_arg,
     normalize_username,
+    MediaWikiVersion,
     redirect_func,
     ModuleDeprecationWrapper as _ModuleDeprecationWrapper,
     PY2,
@@ -136,7 +138,7 @@ class Timestamp(datetime.datetime):
     """Class for handling MediaWiki timestamps.
 
     This inherits from datetime.datetime, so it can use all of the methods
-    and operations of a datetime object.  To ensure that the results of any
+    and operations of a datetime object. To ensure that the results of any
     operation are also a Timestamp object, be sure to use only Timestamp
     objects (and datetime.timedeltas) in any operation.
 
@@ -255,7 +257,7 @@ class Coordinate(_WbRepresentation):
         @type dim: int
         @param site: The Wikibase site
         @type site: pywikibot.site.DataSite
-        @param entity: The URL entity of a Wikibase item
+        @param entity: The URL entity of a Wikibase item for the globe
         @type entity: str
         """
         self.lat = lat
@@ -594,9 +596,29 @@ class WbQuantity(_WbRepresentation):
     _items = ('amount', 'upperBound', 'lowerBound', 'unit')
 
     @staticmethod
+    def _require_errors(site):
+        """
+        Check if the Wikibase site is so old it requires error bounds to be given.
+
+        If no site item is supplied it raises a warning and returns True.
+
+        @param site: The Wikibase site
+        @type site: pywikibot.site.DataSite
+        @rtype: bool
+        """
+        if not site:
+            warning(
+                "WbQuantity now expects a 'site' parameter. This is needed to "
+                "ensure correct handling of error bounds.")
+            return False
+        return MediaWikiVersion(site.version()) < MediaWikiVersion('1.29.0-wmf.2')
+
+    @staticmethod
     def _todecimal(value):
         """
         Convert a string to a Decimal for use in WbQuantity.
+
+        None value is returned as is.
 
         @param value: decimal number to convert
         @type value: str
@@ -604,6 +626,8 @@ class WbQuantity(_WbRepresentation):
         """
         if isinstance(value, Decimal):
             return value
+        elif value is None:
+            return None
         return Decimal(str(value))
 
     @staticmethod
@@ -611,42 +635,73 @@ class WbQuantity(_WbRepresentation):
         """
         Convert a Decimal to a string representation suitable for WikiBase.
 
+        None value is returned as is.
+
         @param value: decimal number to convert
         @type value: Decimal
         @rtype: str
         """
+        if value is None:
+            return None
         return format(value, "+g")
 
-    def __init__(self, amount, unit=None, error=None):
+    def __eq__(self, other):
+        """Override equality to handle different unit representations."""
+        if isinstance(other, self.__class__):
+            self_dict = self.__dict__.copy()
+            other_dict = other.__dict__.copy()
+            self_dict['_unit'] = self.unit
+            other_dict['_unit'] = other.unit
+            return self_dict == other_dict
+        return NotImplemented
+
+    def __init__(self, amount, unit=None, error=None, site=None):
         u"""
         Create a new WbQuantity object.
 
         @param amount: number representing this quantity
         @type amount: string or Decimal. Other types are accepted, and converted
                       via str to Decimal.
-        @param unit: not used (only unit-less quantities are supported)
+        @param unit: the Wikibase item for the unit or the URL entity of this
+                     Wikibase item.
+        @type unit: pywikibot.ItemPage, str or None
         @param error: the uncertainty of the amount (e.g. ±1)
         @type error: same as amount, or tuple of two values, where the first value is
                      the upper error and the second is the lower error value.
+        @param site: The Wikibase site
+        @type site: pywikibot.site.DataSite
         """
         if amount is None:
             raise ValueError('no amount given')
-        if unit is None:
-            unit = '1'
 
         self.amount = self._todecimal(amount)
-        self.unit = unit
+        self._unit = unit
 
-        if error is None:
-            upperError = lowerError = Decimal(0)
-        elif isinstance(error, tuple):
-            upperError = self._todecimal(error[0])
-            lowerError = self._todecimal(error[1])
+        # also allow entity urls to be provided via unit parameter
+        if isinstance(unit, basestring) and \
+                unit.partition('://')[0] not in ('http', 'https'):
+            raise ValueError("'unit' must be an ItemPage or entity url.")
+
+        if error is None and not self._require_errors(site):
+            self.upperBound = self.lowerBound = None
         else:
-            upperError = lowerError = self._todecimal(error)
+            if error is None:
+                self.upperBound = self.lowerBound = Decimal(0)
+            elif isinstance(error, tuple):
+                upperError = self._todecimal(error[0])
+                lowerError = self._todecimal(error[1])
+            else:
+                upperError = lowerError = self._todecimal(error)
 
-        self.upperBound = self.amount + upperError
-        self.lowerBound = self.amount - lowerError
+            self.upperBound = self.amount + upperError
+            self.lowerBound = self.amount - lowerError
+
+    @property
+    def unit(self):
+        """Return _unit's entity url or '1' if _unit is None."""
+        if isinstance(self._unit, ItemPage):
+            return self._unit.concept_url()
+        return self._unit or '1'
 
     def toWikibase(self):
         """
@@ -663,19 +718,27 @@ class WbQuantity(_WbRepresentation):
         return json
 
     @classmethod
-    def fromWikibase(cls, wb):
+    def fromWikibase(cls, wb, site=None):
         """
         Create a WbQuanity from the JSON data given by the Wikibase API.
 
         @param wb: Wikibase JSON
         @type wb: dict
+        @param site: The Wikibase site
+        @type site: pywikibot.site.DataSite
         @rtype: pywikibot.WbQuanity
         """
         amount = cls._todecimal(wb['amount'])
-        upperBound = cls._todecimal(wb['upperBound'])
-        lowerBound = cls._todecimal(wb['lowerBound'])
-        error = (upperBound - amount, amount - lowerBound)
-        return cls(amount, wb['unit'], error)
+        upperBound = cls._todecimal(wb.get('upperBound'))
+        lowerBound = cls._todecimal(wb.get('lowerBound'))
+        error = None
+        if (upperBound and lowerBound) or cls._require_errors(site):
+            error = (upperBound - amount, amount - lowerBound)
+        if wb['unit'] == '1':
+            unit = None
+        else:
+            unit = wb['unit']
+        return cls(amount, unit, error, site)
 
 class WbMonolingualText(_WbRepresentation):
     """A Wikibase monolingual text representation."""
@@ -778,6 +841,8 @@ def Site(code=None, fam=None, user=None, sysop=None, interface=None, url=None):
     @param url: Instead of code and fam, does try to get a Site based on the
         URL. Still requires that the family supporting that URL exists.
     @type url: string
+    @rtype: pywikibot.site.APISite
+
     """
     # Either code and fam or only url
     if url and (code or fam):
@@ -823,13 +888,16 @@ def Site(code=None, fam=None, user=None, sysop=None, interface=None, url=None):
 
     interface = interface or fam.interface(code)
 
-    # config.usernames is initialised with a dict for each family name
+    # config.usernames is initialised with a defaultdict for each family name
     family_name = str(fam)
-    if family_name in config.usernames:
-        user = user or config.usernames[family_name].get(code) \
-            or config.usernames[family_name].get('*')
-        sysop = sysop or config.sysopnames[family_name].get(code) \
-            or config.sysopnames[family_name].get('*')
+
+    code_to_user = config.usernames['*'].copy()
+    code_to_user.update(config.usernames[family_name])
+    user = user or code_to_user.get(code) or code_to_user.get('*')
+
+    code_to_sysop = config.sysopnames['*'].copy()
+    code_to_sysop.update(config.sysopnames[family_name])
+    sysop = sysop or code_to_sysop.get(code) or code_to_sysop.get('*')
 
     if not isinstance(interface, type):
         # If it isnt a class, assume it is a string
@@ -934,7 +1002,7 @@ def _flush(stop=True):
         page_put_queue.put((None, [], {}))
 
     num, sec = remaining()
-    if num > 0:
+    if num > 0 and sec.total_seconds() > config.noisysleep:
         output(color_format(
             '{lightblue}Waiting for {num} pages to be put. '
             'Estimated time remaining: {sec}{default}', num=num, sec=sec))

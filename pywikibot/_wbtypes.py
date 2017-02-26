@@ -1,4 +1,4 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Wikibase data type classes."""
 #
 # (C) Pywikibot team, 2013-2015
@@ -47,3 +47,6 @@ class WbRepresentation(object):
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not self.__eq__(other)

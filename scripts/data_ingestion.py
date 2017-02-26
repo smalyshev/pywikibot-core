@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """
 A generic bot to do data ingestion (batch uploading).
 
@@ -8,7 +8,7 @@ usage:
     python pwb.py data_ingestion -csvdir:local_dir/ -page:config_page
 """
 #
-# (C) Pywikibot team, 2013
+# (C) Pywikibot team, 2013-2016
 #
 # Distributed under the terms of the MIT license.
 #
@@ -38,9 +38,8 @@ import pywikibot
 from pywikibot import pagegenerators
 
 from pywikibot.comms.http import fetch
+from pywikibot.specialbots import UploadRobot
 from pywikibot.tools import deprecated, deprecated_args
-
-from scripts import upload
 
 if sys.version_info[0] > 2:
     from urllib.parse import urlparse
@@ -105,9 +104,8 @@ class Photo(pywikibot.FilePage):
         """
         hashObject = hashlib.sha1()
         hashObject.update(self.downloadPhoto().getvalue())
-        return list(
-            page.title(withNamespace=False) for page in
-            self.site.allimages(sha1=base64.b16encode(hashObject.digest())))
+        return [page.title(withNamespace=False) for page in
+                self.site.allimages(sha1=base64.b16encode(hashObject.digest()))]
 
     def getTitle(self, fmt):
         """
@@ -204,12 +202,12 @@ class DataIngestionBot(pywikibot.Bot):
         title = photo.getTitle(self.titlefmt)
         description = photo.getDescription(self.pagefmt)
 
-        bot = upload.UploadRobot(url=photo.URL,
-                                 description=description,
-                                 useFilename=title,
-                                 keepFilename=True,
-                                 verifyDescription=False,
-                                 targetSite=self.site)
+        bot = UploadRobot(url=photo.URL,
+                          description=description,
+                          useFilename=title,
+                          keepFilename=True,
+                          verifyDescription=False,
+                          targetSite=self.site)
         bot._contents = photo.downloadPhoto().getvalue()
         bot._retrieved = True
         bot.run()

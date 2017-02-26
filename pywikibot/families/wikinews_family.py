@@ -1,5 +1,10 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Family module for Wikinews."""
+#
+# (C) Pywikibot team, 2005-2016
+#
+# Distributed under the terms of the MIT license.
+#
 from __future__ import absolute_import, unicode_literals
 
 from pywikibot import family
@@ -28,9 +33,9 @@ class Family(family.SubdomainFamily, family.WikimediaFamily):
     def __init__(self):
         """Constructor."""
         self.languages_by_size = [
-            'sr', 'en', 'fr', 'de', 'pl', 'pt', 'es', 'ru', 'it', 'zh', 'ca',
-            'ta', 'cs', 'el', 'sv', 'ar', 'fa', 'ro', 'uk', 'tr', 'ja', 'sq',
-            'no', 'eo', 'ko', 'fi', 'bs', 'he', 'bg',
+            'sr', 'en', 'fr', 'de', 'ru', 'pl', 'pt', 'es', 'it', 'zh', 'cs',
+            'ca', 'ta', 'el', 'ar', 'sv', 'fa', 'ro', 'uk', 'tr', 'ja', 'sq',
+            'no', 'eo', 'fi', 'bs', 'he', 'ko', 'bg',
         ]
 
         super(Family, self).__init__()

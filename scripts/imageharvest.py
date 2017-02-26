@@ -16,23 +16,23 @@ Other options:
 -shown      Choose images shown on the page as well as linked from it
 -justshown  Choose _only_ images shown on the page, not those linked
 """
-#  (C) Pywikibot team, 2004-2015
 #
-#   Distributed under the terms of the MIT license.
+# (C) Pywikibot team, 2004-2016
+#
+# Distributed under the terms of the MIT license.
 #
 from __future__ import absolute_import, unicode_literals
 
 __version__ = '$Id$'
-
+#
 import os
 
 import BeautifulSoup
 
 import pywikibot
 
+from pywikibot.specialbots import UploadRobot
 from pywikibot.tools import PY2
-
-from scripts import upload
 
 if not PY2:
     import urllib
@@ -121,7 +121,7 @@ def main(give_url, image_url, desc):
                                       % (mysite.namespace(14), cat))
             desc += "\r\n\r\n" + basicdesc + "\r\n\r\n" + \
                     "\r\n".join(categories)
-            uploadBot = upload.UploadRobot(image, description=desc)
+            uploadBot = UploadRobot(image, description=desc)
             uploadBot.run()
         elif answer == 's':
             break

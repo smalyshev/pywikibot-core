@@ -1,4 +1,4 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Tests for the category bot script."""
 #
 # (C) Pywikibot team, 2015-2016
@@ -59,7 +59,7 @@ class CfdActions(DefaultSiteTestCase):
         self.assertEqual(bot.newcat.text, expected)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     try:
         unittest.main()
     except SystemExit:

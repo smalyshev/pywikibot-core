@@ -1,4 +1,4 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """API tests which do not interact with a site."""
 #
 # (C) Pywikibot team, 2012-2014
@@ -476,5 +476,5 @@ class QueryGenTests(DefaultDrySiteTestCase):
         self.assertCountEqual(qGen1.request._params.items(), qGen2.request._params.items())
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     unittest.main()

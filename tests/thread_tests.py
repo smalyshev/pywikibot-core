@@ -1,4 +1,4 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Tests for threading tools."""
 #
 # (C) Pywikibot team, 2014
@@ -75,7 +75,7 @@ class BasicGeneratorIntersectTestCase(GeneratorIntersectTestCase):
         self.assertEqualItertools(['aabc', 'dddb', 'baa'])
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     try:
         unittest.main()
     except SystemExit:

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Script to copy self published files from English Wikipedia to Wikimedia Commons.
+Script to copy self published files from English Wikipedia to Commons.
 
 This bot is based on imagecopy.py and intended to be used to empty out
 http://en.wikipedia.org/wiki/Category:Self-published_work
@@ -45,7 +45,7 @@ Todo:
 # English Wikipedia specific bot by:
 # (C) Multichill 2010-2012
 #
-# (C) Pywikibot team, 2010-2015
+# (C) Pywikibot team, 2010-2016
 #
 # Distributed under the terms of the MIT license.
 #
@@ -63,9 +63,10 @@ import pywikibot
 
 from pywikibot import pagegenerators, i18n
 
+from pywikibot.specialbots import UploadRobot
 from pywikibot.tools import PY2
 
-from scripts import imagerecat, image, upload
+from scripts import imagerecat, image
 
 if not PY2:
     import tkinter as Tkinter
@@ -85,10 +86,11 @@ NL = ''
 
 nowCommonsTemplate = {
     'de': u'{{NowCommons|%s}}',
-    'en': u'{{NowCommons|1=File:%s|date=~~~~~|reviewer={{subst:REVISIONUSER}}}}',
+    'en': '{{NowCommons|1=File:%s|date=~~~~~|reviewer={{subst:REVISIONUSER}}}}',
     'lb': u'{{Elo op Commons|%s}}',
     'nds-nl': u'{{NoenCommons|1=File:%s}}',
-    'shared': u'{{NowCommons|1=File:%s|date=~~~~~|reviewer={{subst:REVISIONUSER}}}}',
+    'shared': ('{{NowCommons|1=File:%s|date=~~~~~|'
+               'reviewer={{subst:REVISIONUSER}}}}'),
 }
 
 moveToCommonsTemplate = {
@@ -262,6 +264,7 @@ sourceGarbage = {
 informationTemplate = {
     'de': 'Information',
     'en': 'Information',
+    'lb': 'Information',
     'nds-nl': 'Information',
     'shared': 'Information',
 }
@@ -277,6 +280,15 @@ informationFields = {
         u'andere Versione': u'other versions',
     },
     'en': {
+        u'location': u'remarks',
+        u'description': u'description',
+        u'source': u'source',
+        u'date': u'date',
+        u'author': u'author',
+        u'permission': u'permission',
+        u'other versions': u'other versions',
+    },
+    'lb': {
         u'location': u'remarks',
         u'description': u'description',
         u'source': u'source',
@@ -316,6 +328,8 @@ def supportedSite():
         skipTemplates,
         licenseTemplates,
         sourceGarbage,
+        informationTemplate,
+        informationFields,
     ]
     for l in lists:
         if not l.get(lang):
@@ -357,7 +371,7 @@ class imageFetcher(threading.Thread):
 
             text = imagepage.get()
             foundMatch = False
-            for (regex, replacement) in licenseTemplates[page.site.language()]:
+            for (regex, replacement) in licenseTemplates[page.site.lang]:
                 match = re.search(regex, text, flags=re.IGNORECASE)
                 if match:
                     foundMatch = True
@@ -375,7 +389,7 @@ class imageFetcher(threading.Thread):
 
         """
         for template in imagepage.templates():
-            if template in skipTemplates[imagepage.site.language()]:
+            if template in skipTemplates[imagepage.site.lang]:
                 pywikibot.output(
                     u'Found %s which is on the template skip list' % template)
                 return True
@@ -422,25 +436,25 @@ class imageFetcher(threading.Thread):
         other_versions = u''
         contents = {}
 
-        for key, value in informationFields.get(
-                imagepage.site.language()).items():
+        for key, value in informationFields[imagepage.site.lang].items():
             contents[value] = u''
 
         templates = imagepage.templatesWithParams()
+        information = informationTemplate[imagepage.site.lang]
+        fields = informationFields[imagepage.site.lang]
 
         for (template, params) in templates:
-            if template == u'Information':
+            if template == information:
                 for param in params:
                     # Split at =
                     (field, sep, value) = param.partition(u'=')
                     # To lowercase, remove underscores and strip of spaces
                     field = field.lower().replace(u'_', u' ').strip()
+                    key = fields.get(field)
                     # See if first part is in fields list
-                    if field in informationFields.get(
-                            imagepage.site.language()).keys():
+                    if key:
                         # Ok, field is good, store it.
-                        contents[informationFields.get(
-                            imagepage.site.language()).get(field)] = value.strip()
+                        contents[key] = value.strip()
 
         # We now got the contents from the old information template.
         # Let's get the info for the new one
@@ -480,7 +494,7 @@ class imageFetcher(threading.Thread):
         # Still have to filter out crap like "see below" or "yes"
         if contents[u'permission']:
             # Strip of the license temlate if it's in the permission section
-            for (regex, repl) in licenseTemplates[imagepage.site.language()]:
+            for (regex, repl) in licenseTemplates[imagepage.site.lang]:
                 contents[u'permission'] = re.sub(regex, u'',
                                                  contents[u'permission'],
                                                  flags=re.IGNORECASE)
@@ -501,10 +515,10 @@ class imageFetcher(threading.Thread):
         # text = re.sub(u'== Licensing ==', u'', text, re.IGNORECASE)
         # text = re.sub('\{\{(self|self2)\|[^\}]+\}\}', '', text, re.IGNORECASE)
 
-        for toRemove in sourceGarbage[imagepage.site.language()]:
+        for toRemove in sourceGarbage[imagepage.site.lang]:
             text = re.sub(toRemove, u'', text, flags=re.IGNORECASE)
 
-        for (regex, repl) in licenseTemplates[imagepage.site.language()]:
+        for (regex, repl) in licenseTemplates[imagepage.site.lang]:
             text = re.sub(regex, u'', text, flags=re.IGNORECASE)
 
         text = pywikibot.removeCategoryLinks(text, imagepage.site()).strip()
@@ -577,7 +591,7 @@ class imageFetcher(threading.Thread):
         family = site.family.name
         result = u''
         for (regex,
-             replacement) in licenseTemplates[imagepage.site.language()]:
+             replacement) in licenseTemplates[imagepage.site.lang]:
             match = re.search(regex, text, flags=re.IGNORECASE)
             if match:
                 result = re.sub(regex, replacement, match.group(0),
@@ -877,13 +891,12 @@ class uploader(threading.Thread):
         """Work on a single image."""
         cid = self.buildNewImageDescription(fields)
         pywikibot.output(cid)
-        bot = upload.UploadRobot(url=fields.get('imagepage').fileUrl(),
-                                 description=cid,
-                                 useFilename=fields.get('filename'),
-                                 keepFilename=True, verifyDescription=False,
-                                 ignoreWarning=True,
-                                 targetSite=pywikibot.Site('commons',
-                                                           'commons'))
+        bot = UploadRobot(url=fields.get('imagepage').fileUrl(),
+                          description=cid,
+                          useFilename=fields.get('filename'),
+                          keepFilename=True, verifyDescription=False,
+                          ignoreWarning=True,
+                          targetSite=pywikibot.Site('commons', 'commons'))
         bot.run()
 
         self.tagNowcommons(fields.get('imagepage'), fields.get('filename'))
@@ -967,16 +980,16 @@ class uploader(threading.Thread):
             imtxt = imagepage.get(force=True)
 
             # Remove the move to commons templates
-            if imagepage.site.language() in moveToCommonsTemplate:
+            if imagepage.site.lang in moveToCommonsTemplate:
                 for moveTemplate in moveToCommonsTemplate[
-                        imagepage.site.language()]:
+                        imagepage.site.lang]:
                     imtxt = re.sub(u'(?i)\{\{' + moveTemplate +
                                    u'[^\}]*\}\}', u'', imtxt)
 
             # add {{NowCommons}}
-            if imagepage.site.language() in nowCommonsTemplate:
+            if imagepage.site.lang in nowCommonsTemplate:
                 addTemplate = nowCommonsTemplate[
-                    imagepage.site.language()] % filename
+                    imagepage.site.lang] % filename
             else:
                 addTemplate = nowCommonsTemplate['_default'] % filename
 
@@ -989,7 +1002,7 @@ class uploader(threading.Thread):
             imagepage.put(imtxt + addTemplate, comment=commentText)
 
     def replaceUsage(self, imagepage, filename):
-        """replace all usage if image is uploaded under a different name."""
+        """Replace all usage if image is uploaded under a different name."""
         if imagepage.title(withNamespace=False) != filename:
             gen = pagegenerators.FileLinksGenerator(imagepage)
             preloadingGen = pagegenerators.PreloadingGenerator(gen)

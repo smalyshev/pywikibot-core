@@ -17,9 +17,9 @@ do             Shortcut action command is "do".
 
 broken         Tries to fix redirect which point to nowhere by using the last
 br             moved target of the destination page. If this fails and the
-               -delete option is set, it either deletes the page or marks it for
-               deletion depending on whether the account has admin rights. It
-               will mark the redirect not for deletion if there is no speedy
+               -delete option is set, it either deletes the page or marks it
+               for deletion depending on whether the account has admin rights.
+               It will mark the redirect not for deletion if there is no speedy
                deletion template available. Shortcut action command is "br".
 
 both           Both of the above. Retrieves redirect pages from live wiki,
@@ -202,7 +202,7 @@ class RedirectGenerator(object):
         """Generator that yields batches of 500 redirects as a list."""
         apiQ = []
         for page in self.get_redirect_pages_via_api():
-            apiQ.append(str(page._pageid))
+            apiQ.append(str(page.pageid))
             if len(apiQ) >= 500:
                 yield apiQ
                 apiQ = []
@@ -342,9 +342,9 @@ class RedirectGenerator(object):
                  datetime.timedelta(0, self.offset * 3600))
         # self.offset hours ago
         offset_time = start.strftime("%Y%m%d%H%M%S")
-        pywikibot.output(u'Retrieving %s moved pages via API...'
-                         % (str(self.api_number)
-                            if self.api_number is not None else "all"))
+        pywikibot.output('Retrieving {0} moved pages...'
+                         ''.format(str(self.api_number)
+                                   if self.api_number is not None else 'all'))
         move_gen = self.site.logevents(logtype="move", start=offset_time)
         if self.api_number:
             move_gen.set_maximum_items(self.api_number)

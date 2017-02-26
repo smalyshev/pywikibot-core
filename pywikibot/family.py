@@ -1,7 +1,7 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Objects representing MediaWiki families."""
 #
-# (C) Pywikibot team, 2004-2015
+# (C) Pywikibot team, 2004-2016
 #
 # Distributed under the terms of the MIT license.
 #
@@ -150,6 +150,7 @@ class Family(object):
             'av': u'[a-zабвгдеёжзийклмнопрстуфхцчшщъыьэюя]*',
             'ay': u'[a-záéíóúñ]*',
             'bar': u'[äöüßa-z]*',
+            'bat-smg': '[a-ząčęėįšųūž]*',
             'be': u'[абвгґджзеёжзійклмнопрстуўфхцчшыьэюяćčłńśšŭźža-z]*',
             'be-tarask': u'[абвгґджзеёжзійклмнопрстуўфхцчшыьэюяćčłńśšŭźža-z]*',
             'bg': u'[a-zабвгдежзийклмнопрстуфхцчшщъыьэюя]*',
@@ -173,6 +174,7 @@ class Family(object):
             'el': u'[a-zαβγδεζηθικλμνξοπρστυφχψωςΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩάέήίόύώϊϋΐΰΆΈΉΊΌΎΏΪΫ]*',
             'eml': u'[a-zàéèíîìóòúù]*',
             'es': u'[a-záéíóúñ]*',
+            'eu': u'[a-záéíóúñ]*',
             'et': u'[äöõšüža-z]*',
             'ext': u'[a-záéíóúñ]*',
             'fa': u'[ابپتثجچحخدذرزژسشصضطظعغفقکگلمنوهیآأئؤة‌]*',
@@ -217,6 +219,7 @@ class Family(object):
             'lrc': u'[ابپتثجچحخدذرزژسشصضطظعغفقکگلمنوهیآأئؤة‌]*',
             'ltg': u'[a-zA-ZĀāČčĒēĢģĪīĶķĻļŅņŠšŪūŽž]*',
             'lv': u'[a-zA-ZĀāČčĒēĢģĪīĶķĻļŅņŠšŪūŽž]*',
+            'mai': '[a-zऀ-ॣ०-꣠-ꣿ]*',
             'mg': u'[a-zàâçéèêîôûäëïöüùÇÉÂÊÎÔÛÄËÏÖÜÀÈÙ]*',
             'mhr': u'[a-zабвгдеёжзийклмнопрстуфхцчшщъыьэюя]*',
             'mk': u'[a-zабвгдѓежзѕијклљмнњопрстќуфхцчџш]*',
@@ -710,7 +713,7 @@ class Family(object):
         # A list with the name in the cross-language flag permissions
         self.cross_allowed = []
 
-        # A list with the name of the category containing disambiguation
+        # A dict with the name of the category containing disambiguation
         # pages for the various languages. Only one category per language,
         # and without the namespace, so add things like:
         # 'en': "Disambiguation"
@@ -738,7 +741,7 @@ class Family(object):
         self.category_text_separator = config.line_separator * 2
         # When both at the bottom should categories come after interwikilinks?
         # TODO: T86284 Needed on Wikia sites, as it uses the CategorySelect
-        # extension which puts categories last on all sites.  TO BE DEPRECATED!
+        # extension which puts categories last on all sites. TO BE DEPRECATED!
         self.categories_last = []
 
         # Which languages have a special order for putting interlanguage
@@ -934,11 +937,11 @@ class Family(object):
             warn(u'Family name %s contains non-ascii characters' % cls.name,
                  FamilyMaintenanceWarning)
         # FIXME: wikisource uses code '-' for www.wikisource.org
-        if not all(all(x in CODE_CHARACTERS for x in code) and
-                   (cls.name == 'wikisource' or code[0] != '-')
-                   for code in cls.langs.keys()):
-            warn(u'Family %s codes contains non-ascii characters',
-                 FamilyMaintenanceWarning)
+        for code in cls.langs.keys():
+            if not all(x in CODE_CHARACTERS for x in code) and \
+                    (cls.name == 'wikisource' or code[0] != '-'):
+                warn('Family %s code %s contains non-ascii characters' %
+                     (cls.name, code), FamilyMaintenanceWarning)
         Family._families[fam] = cls
         return cls
 
@@ -1240,7 +1243,7 @@ class Family(object):
         Use L{pywikibot.tools.MediaWikiVersion} to compare version strings.
         """
         # Here we return the latest mw release for downloading
-        return '1.26.2'
+        return '1.28.0'
 
     def force_version(self, code):
         """
@@ -1555,6 +1558,8 @@ class WikimediaFamily(Family):
 
         # Renamed; see T11823
         'be-x-old': 'be-tarask',
+
+        '-': 'mul',  # T114574
     }
 
     # Not open for edits; stewards can still edit.
@@ -1569,6 +1574,14 @@ class WikimediaFamily(Family):
         # Romanian was to be the replacement.
         'mo': 'ro',
     }
+
+    def __init__(self):
+        """Constructor."""
+        super(WikimediaFamily, self).__init__()
+        # WikimediaFamily uses wikibase for the category name containing
+        # disambiguation pages for the various languages. We need the
+        # wikibase code and item number:
+        self.disambcatname = {'wikidata': 'Q1982926'}
 
     @property
     def domain(self):
@@ -1602,8 +1615,12 @@ class WikimediaFamily(Family):
         return 'https'
 
     def rcstream_host(self, code):
-        """Return 'stream.wikimedia.org' as the RCStream hostname."""
-        return 'stream.wikimedia.org'
+        """Return 'https://stream.wikimedia.org' as the RCStream hostname."""
+        return 'https://stream.wikimedia.org'
+
+    def rcstream_port(self, code):
+        """Return 443 as the RCStream port number."""
+        return 443
 
 
 class WikimediaOrgFamily(SingleSiteFamily, WikimediaFamily):

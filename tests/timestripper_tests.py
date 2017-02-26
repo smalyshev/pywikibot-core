@@ -1,7 +1,7 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Tests for archivebot.py/Timestripper."""
 #
-# (C) Pywikibot team, 2014
+# (C) Pywikibot team, 2016
 #
 # Distributed under the terms of the MIT license.
 #
@@ -10,15 +10,16 @@ from __future__ import absolute_import, unicode_literals
 __version__ = '$Id$'
 
 import datetime
+import re
 
 from pywikibot.textlib import TimeStripper, tzoneFixedOffset
 
 from tests.aspects import (
     unittest,
     TestCase,
-    DefaultSiteTestCase,
-    DeprecationTestCase,
 )
+
+MatchObject = type(re.search('', ''))
 
 
 class TestTimeStripperCase(TestCase):
@@ -31,19 +32,6 @@ class TestTimeStripperCase(TestCase):
         """Set up test cases."""
         super(TestTimeStripperCase, self).setUp()
         self.ts = TimeStripper(self.get_site())
-
-
-class DeprecatedTestTimeStripperCase(TestTimeStripperCase, DeprecationTestCase,
-                                     DefaultSiteTestCase):
-
-    """Test deprecated parts of the TimeStripper class."""
-
-    def test_findmarker(self):
-        """Test that string which is not part of text is found."""
-        txt = u'this is a string with a maker is @@@@already present'
-        self.assertEqual(self.ts.findmarker(txt, base=u'@@', delta='@@'),
-                         '@@@@@@')
-        self.assertOneDeprecation()
 
 
 class TestTimeStripperWithNoDigitsAsMonths(TestTimeStripperCase):
@@ -60,15 +48,19 @@ class TestTimeStripperWithNoDigitsAsMonths(TestTimeStripperCase):
         txtWithNoMatch = u'this string has no match'
         pat = self.ts.pyearR
 
-        self.assertEqual(self.ts.last_match_and_replace(txtWithOneMatch, pat),
-                         (u'this string has 3000, @@ and 3000 in it',
-                          {'year': u'1999'})
-                         )
-        self.assertEqual(self.ts.last_match_and_replace(txtWithTwoMatch, pat),
-                         (u'this string has @@, @@ and 3000 in it',
-                          {'year': u'1999'})
-                         )
-        self.assertEqual(self.ts.last_match_and_replace(txtWithNoMatch, pat),
+        txt, m = self.ts._last_match_and_replace(txtWithOneMatch, pat)
+        self.assertEqual('this string has 3000, @@@@ and 3000 in it', txt)
+        self.assertIsInstance(m, MatchObject)
+        self.assertEqual(m.groupdict(), {'year': '1999'})
+        self.assertEqual(m.start(), 22)
+
+        txt, m = self.ts._last_match_and_replace(txtWithTwoMatch, pat)
+        self.assertEqual('this string has @@@@, @@@@ and 3000 in it', txt)
+        self.assertIsInstance(m, MatchObject)
+        self.assertEqual(m.groupdict(), {'year': '1999'})
+        self.assertEqual(m.start(), 22)
+
+        self.assertEqual(self.ts._last_match_and_replace(txtWithNoMatch, pat),
                          (txtWithNoMatch,
                           None)
                          )
@@ -79,19 +71,25 @@ class TestTimeStripperWithNoDigitsAsMonths(TestTimeStripperCase):
         txtWithNoMatch = u'this string has no match'
         pat = self.ts.pmonthR
 
-        self.assertEqual(self.ts.last_match_and_replace(txtWithOneMatch, pat),
-                         (u'this string has XXX, YYY and @@ in it',
-                          {'month': u'février'})
-                         )
-        self.assertEqual(self.ts.last_match_and_replace(txtWithTwoMatch, pat),
-                         (u'this string has XXX, @@ and @@ in it',
-                          {'month': u'février'})
-                         )
-        self.assertEqual(self.ts.last_match_and_replace(txtWithThreeMatch, pat),
-                         (u'this string has @@, @@ and @@ in it',
-                          {'month': u'février'})
-                         )
-        self.assertEqual(self.ts.last_match_and_replace(txtWithNoMatch, pat),
+        txt, m = self.ts._last_match_and_replace(txtWithOneMatch, pat)
+        self.assertEqual('this string has XXX, YYY and @@@@@@@ in it', txt)
+        self.assertIsInstance(m, MatchObject)
+        self.assertEqual(m.groupdict(), {'month': 'février'})
+        self.assertEqual(m.start(), 29)
+
+        txt, m = self.ts._last_match_and_replace(txtWithTwoMatch, pat)
+        self.assertEqual('this string has XXX, @@@@ and @@@@@@@ in it', txt)
+        self.assertIsInstance(m, MatchObject)
+        self.assertEqual(m.groupdict(), {'month': 'février'})
+        self.assertEqual(m.start(), 30)
+
+        txt, m = self.ts._last_match_and_replace(txtWithThreeMatch, pat)
+        self.assertEqual('this string has @@@, @@@@ and @@@@@@@ in it', txt)
+        self.assertIsInstance(m, MatchObject)
+        self.assertEqual(m.groupdict(), {'month': 'février'})
+        self.assertEqual(m.start(), 30)
+
+        self.assertEqual(self.ts._last_match_and_replace(txtWithNoMatch, pat),
                          (txtWithNoMatch,
                           None)
                          )
@@ -120,22 +118,50 @@ class TestTimeStripperWithDigitsAsMonths(TestTimeStripperCase):
         txtWithNoMatch = u'this string has no match'
         pat = self.ts.pmonthR
 
-        self.assertEqual(self.ts.last_match_and_replace(txtWithOneMatch, pat),
-                         (u'this string has XX. YY. 12. in it',
-                          {'month': u'12.'})
-                         )
-        self.assertEqual(self.ts.last_match_and_replace(txtWithTwoMatch, pat),
-                         (u'this string has XX. 1. 12. in it',
-                          {'month': u'12.'})
-                         )
-        self.assertEqual(self.ts.last_match_and_replace(txtWithThreeMatch, pat),
-                         (u'this string has @@ 1. 12. in it',
-                          {'month': u'12.'})
-                         )
-        self.assertEqual(self.ts.last_match_and_replace(txtWithNoMatch, pat),
+        txt, m = self.ts._last_match_and_replace(txtWithOneMatch, pat)
+        self.assertEqual('this string has XX. YY. 12. in it', txt)
+        self.assertIsInstance(m, MatchObject)
+        self.assertEqual(m.groupdict(), {'month': '12.'})
+        self.assertEqual(m.start(), 24)
+
+        txt, m = self.ts._last_match_and_replace(txtWithTwoMatch, pat)
+        self.assertEqual('this string has XX. 1. 12. in it', txt)
+        self.assertIsInstance(m, MatchObject)
+        self.assertEqual(m.groupdict(), {'month': '12.'})
+        self.assertEqual(m.start(), 23)
+
+        txt, m = self.ts._last_match_and_replace(txtWithThreeMatch, pat)
+        self.assertEqual('this string has @@ 1. 12. in it', txt)
+        self.assertIsInstance(m, MatchObject)
+        self.assertEqual(m.groupdict(), {'month': '12.'})
+        self.assertEqual(m.start(), 22)
+
+        self.assertEqual(self.ts._last_match_and_replace(txtWithNoMatch, pat),
                          (txtWithNoMatch,
                           None)
                          )
+
+
+class TestTimeStripperNumberAndDate(TestTimeStripperCase):
+
+    """Test cases for lines with (non-year) numbers and timestamps."""
+
+    family = 'wikipedia'
+    code = 'en'
+
+    def test_four_digit_is_not_year_with_no_timestamp(self):
+        """A 4-digit number should not be mistaken as year (w/o timestamp)."""
+        self.assertIsNone(
+            self.ts.timestripper(
+                '2000 people will meet on 16 December at 22:00 (UTC).'))
+
+    def test_four_digit_is_not_year_with_timestamp(self):
+        """A 4-digit number should not be mistaken as year (w/ timestamp)."""
+        self.assertEqual(
+            self.ts.timestripper(
+                '2000 people will attend. --12:12, 14 December 2015 (UTC)'),
+            datetime.datetime(
+                2015, 12, 14, 12, 12, tzinfo=tzoneFixedOffset(0, 'UTC')))
 
 
 class TestTimeStripperLanguage(TestCase):
@@ -263,7 +289,7 @@ class TestTimeStripperDoNotArchiveUntil(TestTimeStripperCase):
     tzone = tzoneFixedOffset(0, 'UTC')
 
     def test_timestripper_match(self):
-        """Test that dates in comments  are correctly recognised."""
+        """Test that dates in comments are correctly recognised."""
         ts = self.ts
 
         txt_match = '<!-- [[User:Do___ArchiveUntil]] ' + self.date + ' -->'
@@ -293,7 +319,7 @@ class TestTimeStripperDoNotArchiveUntil(TestTimeStripperCase):
         self.assertEqual(ts.timestripper(txt_match), res)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     try:
         unittest.main()
     except SystemExit:

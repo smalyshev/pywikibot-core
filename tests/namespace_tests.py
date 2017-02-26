@@ -1,4 +1,4 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Tests for the Namespace class."""
 #
 # (C) Pywikibot team, 2014
@@ -425,7 +425,7 @@ class TestNamespacesDictGetItem(TestCase):
         self.assertRaises(KeyError, namespaces.__getitem__, '|')
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     try:
         unittest.main()
     except SystemExit:

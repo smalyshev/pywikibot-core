@@ -49,12 +49,18 @@ colors = [
     'white',
 ]
 
-colorTagR = re.compile('\03{(?P<name>%s|previous)}' % '|'.join(colors))
+_color_pat = '%s|previous' % '|'.join(colors)
+colorTagR = re.compile('\03{((:?%s);?(:?%s)?)}' % (_color_pat, _color_pat))
+
+if __debug__ and not PY2:
+    raw_input = NotImplemented  # pyflakes workaround
 
 
 class UI(object):
 
     """Base for terminal user interfaces."""
+
+    split_col_pat = re.compile('(\w+);?(\w+)?')
 
     def __init__(self):
         """
@@ -78,7 +84,7 @@ class UI(object):
 
         This method initializes handler(s) for output levels VERBOSE (if
         enabled by config.verbose_output), INFO, STDOUT, WARNING, ERROR,
-        and CRITICAL.  STDOUT writes its output to sys.stdout; all the
+        and CRITICAL. STDOUT writes its output to sys.stdout; all the
         others write theirs to sys.stderr.
 
         """
@@ -122,6 +128,17 @@ class UI(object):
         raise NotImplementedError('The {0} class does not support '
                                   'colors.'.format(self.__class__.__name__))
 
+    @classmethod
+    def divide_color(cls, color):
+        """
+        Split color label in a tuple.
+
+        Received color is a string like 'fg_color;bg_color' or 'fg_color'.
+        Returned values are (fg_color, bg_color) or (fg_color, None).
+
+        """
+        return cls.split_col_pat.search(color).groups()
+
     def _write(self, text, target_stream):
         """Optionally encode and write the text to the target stream."""
         if PY2:
@@ -140,8 +157,11 @@ class UI(object):
         # Therefore we need this stack.
         color_stack = ['default']
         text_parts = colorTagR.split(text) + ['default']
-        for index, (text, next_color) in enumerate(zip(text_parts[::2],
-                                                       text_parts[1::2])):
+        # match.split() includes every regex group; for each matched color
+        # fg_col:b_col, fg_col and bg_col are added to the resulting list.
+        len_text_parts = len(text_parts[::4])
+        for index, (text, next_color) in enumerate(zip(text_parts[::4],
+                                                       text_parts[1::4])):
             current_color = color_stack[-1]
             if next_color == 'previous':
                 if len(color_stack) > 1:  # keep the last element in the stack
@@ -156,7 +176,7 @@ class UI(object):
                 if '\n' in text:  # Normal end of line
                     text = text.replace('\n', ' ***\n', 1)
                     colored_line = False
-                elif index == len(text_parts) // 2 - 1:  # Or end of text
+                elif index == len_text_parts - 1:  # Or end of text
                     text += ' ***'
                     colored_line = False
 
@@ -237,7 +257,7 @@ class UI(object):
         Works like raw_input(), but returns a unicode string instead of ASCII.
 
         Unlike raw_input, this function automatically adds a colon and space
-        after the question if they are not already present.  Also recognises
+        after the question if they are not already present. Also recognises
         a trailing question mark.
 
         @param question: The question, without trailing whitespace.

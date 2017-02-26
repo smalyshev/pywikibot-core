@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """
 This module can do slight modifications to tidy a wiki page's source code.
 
@@ -118,7 +118,8 @@ def main(*args):
             elif ignore_mode == 'match':
                 options['ignore'] = cosmetic_changes.CANCEL_MATCH
             else:
-                raise ValueError('Unknown ignore mode "{0}"!'.format(ignore_mode))
+                raise ValueError(
+                    'Unknown ignore mode "{0}"!'.format(ignore_mode))
         else:
             genFactory.handleArg(arg)
 

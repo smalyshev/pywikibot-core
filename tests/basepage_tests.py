@@ -1,4 +1,4 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Tests for BasePage subclasses."""
 #
 # (C) Pywikibot team, 2015
@@ -113,7 +113,7 @@ class BasePageMethodsTestBase(BasePageTestBase):
         self.assertFalse(self._page.isCategoryRedirect())
         self.assertTrue(self._page.botMayEdit())
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     try:
         unittest.main()
     except SystemExit:

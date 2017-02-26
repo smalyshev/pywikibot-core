@@ -1,10 +1,11 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 """
-Bot to add images to Wikidata items. The image is extracted from the page_props.
+Bot to add images to Wikidata items.
 
-For this to be available the PageImages extension
-(https://www.mediawiki.org/wiki/Extension:PageImages) needs to be installed
+The image is extracted from the page_props. For this to be available the
+PageImages extension (https://www.mediawiki.org/wiki/Extension:PageImages)
+needs to be installed
 
 Usage:
 
@@ -14,7 +15,7 @@ Usage:
 """
 #
 # (C) Multichill, 2014
-# (C) Pywikibot team, 2013-2014
+# (C) Pywikibot team, 2013-2016
 #
 # Distributed under the terms of MIT License.
 #
@@ -38,10 +39,10 @@ class IllustrateRobot(WikidataBot):
         """
         Constructor.
 
-        Arguments:
-            * generator     - A generator that yields Page objects.
-            * wdproperty    - The property to add. Should be of type commonsMedia
-
+        @param generator: A generator that yields Page objects
+        @type generator: generator
+        @param wdproperty: The property to add. Should be of type commonsMedia
+        @type wdproperty: str
         """
         super(IllustrateRobot, self).__init__()
         self.generator = pagegenerators.PreloadingGenerator(generator)
@@ -71,17 +72,20 @@ class IllustrateRobot(WikidataBot):
 
         newclaim = pywikibot.Claim(self.repo, self.wdproperty)
         commonssite = pywikibot.Site("commons", "commons")
-        imagelink = pywikibot.Link(imagename, source=commonssite, defaultNamespace=6)
+        imagelink = pywikibot.Link(imagename, source=commonssite,
+                                   defaultNamespace=6)
         image = pywikibot.FilePage(imagelink)
         if image.isRedirectPage():
             image = pywikibot.FilePage(image.getRedirectTarget())
 
         if not image.exists():
-            pywikibot.output('[[%s]] doesn\'t exist so I can\'t link to it' % (image.title(),))
+            pywikibot.output('[[%s]] doesn\'t exist so I can\'t link to it'
+                             % (image.title(),))
             return
 
         newclaim.setTarget(image)
-        pywikibot.output('Adding %s --> %s' % (newclaim.getID(), newclaim.getTarget()))
+        pywikibot.output('Adding %s --> %s'
+                         % (newclaim.getID(), newclaim.getTarget()))
         item.addClaim(newclaim)
 
         # A generator might yield pages from multiple sites

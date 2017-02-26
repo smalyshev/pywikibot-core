@@ -1,4 +1,4 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Test cases for the WikiStats dataset."""
 #
 # (C) Pywikibot team, 2014-2016
@@ -98,7 +98,7 @@ class WikiStatsTestCase(TestCase):
         self.assertIn('total', data)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     try:
         unittest.main()
     except SystemExit:

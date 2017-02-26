@@ -1,5 +1,10 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Family module for Wiktionary."""
+#
+# (C) Pywikibot team, 2005-2016
+#
+# Distributed under the terms of the MIT license.
+#
 from __future__ import absolute_import, unicode_literals
 
 from pywikibot import family
@@ -80,19 +85,19 @@ class Family(family.SubdomainFamily, family.WikimediaFamily):
     def __init__(self):
         """Constructor."""
         self.languages_by_size = [
-            'en', 'mg', 'fr', 'sh', 'es', 'zh', 'ru', 'lt', 'pl', 'sv', 'nl',
-            'de', 'ku', 'el', 'it', 'tr', 'ta', 'ko', 'hu', 'fi', 'io', 'kn',
-            'vi', 'pt', 'chr', 'ca', 'ja', 'no', 'ro', 'ml', 'id', 'th', 'uz',
-            'hy', 'li', 'et', 'my', 'or', 'te', 'cs', 'fa', 'jv', 'ar', 'eu',
-            'gl', 'sr', 'az', 'lo', 'uk', 'br', 'fj', 'hr', 'eo', 'da', 'bg',
-            'oc', 'ps', 'simple', 'cy', 'vo', 'is', 'zh-min-nan', 'scn', 'wa',
-            'ast', 'he', 'af', 'tl', 'sw', 'fy', 'tg', 'hi', 'nn', 'sk', 'pnb',
-            'lv', 'mn', 'la', 'ka', 'sl', 'sq', 'nah', 'lb', 'bs', 'nds', 'kk',
-            'sm', 'tk', 'hsb', 'mk', 'ky', 'bn', 'be', 'ms', 'km', 'ga', 'an',
-            'ur', 'co', 'wo', 'sa', 'ang', 'vec', 'tt', 'gn', 'mr', 'so', 'csb',
-            'ug', 'gd', 'sd', 'st', 'mt', 'roa-rup', 'si', 'ie', 'ia', 'ay',
-            'mi', 'kl', 'pa', 'jbo', 'fo', 'ln', 'zu', 'na', 'gv', 'kw', 'gu',
-            'rw', 'ts', 'om', 'qu', 'ss', 'ha', 'su', 'iu', 'am', 'ne', 'dv',
+            'en', 'mg', 'fr', 'sh', 'es', 'zh', 'ru', 'lt', 'de', 'nl', 'sv',
+            'pl', 'ku', 'el', 'it', 'ta', 'tr', 'hu', 'fi', 'ko', 'io', 'kn',
+            'ca', 'vi', 'pt', 'chr', 'sr', 'hi', 'ja', 'hy', 'ro', 'no', 'th',
+            'ml', 'id', 'et', 'uz', 'li', 'my', 'or', 'te', 'fa', 'cs', 'ar',
+            'jv', 'eu', 'gl', 'az', 'lo', 'uk', 'br', 'da', 'hr', 'eo', 'fj',
+            'oc', 'bg', 'ps', 'simple', 'cy', 'vo', 'is', 'zh-min-nan', 'wa',
+            'scn', 'tg', 'ast', 'sk', 'he', 'af', 'tl', 'la', 'sw', 'fy', 'nn',
+            'ky', 'co', 'pnb', 'lv', 'mn', 'ka', 'sl', 'sq', 'nds', 'nah', 'lb',
+            'bs', 'kk', 'tk', 'km', 'sm', 'sa', 'mk', 'hsb', 'bn', 'be', 'ms',
+            'ga', 'ur', 'an', 'wo', 'ang', 'vec', 'pa', 'tt', 'gn', 'sd', 'mr',
+            'so', 'csb', 'ug', 'gd', 'st', 'mt', 'roa-rup', 'si', 'ia', 'ie',
+            'mi', 'ay', 'kl', 'jbo', 'fo', 'ln', 'zu', 'na', 'gv', 'kw', 'gu',
+            'rw', 'ts', 'ne', 'om', 'qu', 'ss', 'su', 'ha', 'iu', 'am', 'dv',
             'tpi', 'yi', 'ti', 'sg', 'tn', 'ks',
         ]
 

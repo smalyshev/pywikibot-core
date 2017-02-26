@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Tests Python features."""
 #
 # (C) Pywikibot team, 2015
@@ -64,7 +64,7 @@ class PythonTestCase(TestCase):
         self.assertEqual(text, unicodedata2.normalize('NFC', text))
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     try:
         unittest.main()
     except SystemExit:

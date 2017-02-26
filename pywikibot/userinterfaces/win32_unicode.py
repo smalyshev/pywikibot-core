@@ -1,4 +1,4 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Stdout, stderr and argv support for unicode."""
 #
 # (C) David-Sarah Hopwood, 2010
@@ -121,7 +121,7 @@ class UnicodeOutput(IOBase):
         """Write the text to the output."""
         try:
             if self._hConsole is None:
-                if isinstance(text, unicode):
+                if not PY3 and isinstance(text, unicode):
                     text = text.encode('utf-8')
                 self._stream.write(text)
             else:

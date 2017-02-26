@@ -1,4 +1,4 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """
 A window with a unicode textfield where the user can edit.
 
@@ -22,7 +22,7 @@ import sys
 if sys.version_info[0] > 2:
     import tkinter as Tkinter
     from tkinter.scrolledtext import ScrolledText
-    from tkinter import simpledialog as tkSimpleDialog
+    from tkinter import simpledialog as tkSimpleDialog  # flake8: disable=N812
 else:
     import Tkinter
     import tkSimpleDialog

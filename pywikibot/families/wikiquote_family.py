@@ -1,5 +1,10 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Family module for Wikiquote."""
+#
+# (C) Pywikibot team, 2005-2016
+#
+# Distributed under the terms of the MIT license.
+#
 from __future__ import absolute_import, unicode_literals
 
 from pywikibot import family
@@ -66,12 +71,12 @@ class Family(family.SubdomainFamily, family.WikimediaFamily):
     def __init__(self):
         """Constructor."""
         self.languages_by_size = [
-            'en', 'it', 'pl', 'ru', 'de', 'cs', 'pt', 'es', 'fr', 'sk', 'fa',
-            'bs', 'uk', 'tr', 'lt', 'bg', 'he', 'ca', 'sl', 'eo', 'el', 'nn',
-            'id', 'zh', 'hr', 'hy', 'th', 'hu', 'li', 'nl', 'su', 'ko', 'ja',
-            'sv', 'ur', 'te', 'ar', 'fi', 'cy', 'az', 'la', 'no', 'gl', 'ml',
-            'et', 'ku', 'kn', 'sr', 'eu', 'ro', 'ta', 'ka', 'da', 'sa', 'is',
-            'gu', 'vi', 'be', 'hi', 'sq', 'mr', 'br', 'uz', 'af', 'zh-min-nan',
+            'en', 'it', 'pl', 'ru', 'cs', 'de', 'pt', 'es', 'uk', 'fa', 'sk',
+            'bs', 'fr', 'tr', 'he', 'lt', 'ca', 'bg', 'eo', 'sl', 'el', 'hy',
+            'nn', 'id', 'hr', 'zh', 'th', 'hu', 'li', 'su', 'nl', 'ko', 'ja',
+            'az', 'fi', 'ar', 'sv', 'gl', 'ur', 'gu', 'te', 'ta', 'cy', 'la',
+            'no', 'ml', 'et', 'ku', 'sr', 'kn', 'vi', 'eu', 'ro', 'hi', 'ka',
+            'da', 'be', 'sa', 'is', 'sq', 'mr', 'br', 'uz', 'af', 'zh-min-nan',
             'am', 'wo', 'ky',
         ]
 

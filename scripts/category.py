@@ -35,7 +35,7 @@ Options for "listify" action:
 
 Options for "remove" action:
  * -nodelsum    - This specifies not to use the custom edit summary as the
-                  deletion reason.  Instead, it uses the default deletion reason
+                  deletion reason. Instead, it uses the default deletion reason
                   for the language, which is "Category was disbanded" in
                   English.
 
@@ -69,7 +69,7 @@ Options for several actions:
                 - Also, the name of the list to make in the listify option
          NOTE: If the category names have spaces in them you may need to use
          a special syntax in your shell so that the names aren't treated as
-         separate parameters.  For instance, in BASH, use single quotes,
+         separate parameters. For instance, in BASH, use single quotes,
          e.g. -from:'Polar bears'
  * -batch       - Don't prompt to delete emptied categories (do it
                   automatically).
@@ -151,8 +151,10 @@ cfd_templates = {
         'en': [u'cfd', u'cfr', u'cfru', u'cfr-speedy', u'cfm', u'cfdu'],
         'fi': [u'roskaa', u'poistettava', u'korjattava/nimi',
                u'yhdistettäväLuokka'],
+        'fr': ['renommage de catégorie demandé'],
         'he': [u'הצבעת מחיקה', u'למחוק'],
         'nl': [u'categorieweg', u'catweg', u'wegcat', u'weg2'],
+        'cs': ['přejmenovat kategorii', 'přesunout kategorii', 'přejmenování kategorie'],
         # For testing purposes
         'test': [u'delete']
     },
@@ -414,6 +416,7 @@ class CategoryMoveRobot(object):
                  inplace=False, move_oldcat=True, delete_oldcat=True,
                  title_regex=None, history=False, pagesonly=False,
                  deletion_comment=DELETION_COMMENT_AUTOMATIC,
+                 move_comment=None,
                  wikibase=True, allow_split=False, move_together=False,
                  keep_sortkey=None):
         """Store all given parameters in the objects attributes.
@@ -421,8 +424,8 @@ class CategoryMoveRobot(object):
         @param oldcat: The move source.
         @param newcat: The move target.
         @param batch: If True the user has not to confirm the deletion.
-        @param comment: The edit summary for all pages where the
-            category is changed.
+        @param comment: The edit summary for all pages where the category is
+            changed, and also for moves and deletions if not overridden.
         @param inplace: If True the categories are not reordered.
         @param move_oldcat: If True the category page (and talkpage) is
             copied to the new category.
@@ -436,9 +439,12 @@ class CategoryMoveRobot(object):
         @param deletion_comment: Either string or special value:
             DELETION_COMMENT_AUTOMATIC: use a generated message,
             DELETION_COMMENT_SAME_AS_EDIT_COMMENT: use the same message for
-            delete that is also used for move.
-            If the value is not recognized, it's interpreted as
-            DELETION_COMMENT_AUTOMATIC.
+            delete that is used for the edit summary of the pages whose
+            category was changed (see the comment param above). If the value
+            is not recognized, it's interpreted as DELETION_COMMENT_AUTOMATIC.
+        @param move_comment: If set, uses this as the edit summary on the
+            actual move of the category page. Otherwise, defaults to the value
+            of the comment parameter.
         @param wikibase: If True, update the Wikibase item of the
             old category.
         @param allow_split: If False only moves page and talk page together.
@@ -513,6 +519,7 @@ class CategoryMoveRobot(object):
                 # Category is deleted.
                 self.deletion_comment = i18n.twtranslate(self.site,
                                                          'category-was-disbanded')
+        self.move_comment = move_comment if move_comment else self.comment
 
     def run(self):
         """The main bot function that does all the work.
@@ -545,7 +552,7 @@ class CategoryMoveRobot(object):
                     old_cat_title = self.oldcat.title()
                     old_cat_text = self.oldcat.text
                     self.newcat = self.oldcat.move(self.newcat.title(),
-                                                   reason=self.comment,
+                                                   reason=self.move_comment,
                                                    movetalkpage=can_move_talk)
                     # Copy over the article text so it can be stripped of
                     # CFD templates and re-saved. This is faster than
@@ -847,10 +854,6 @@ class CategoryTidyRobot(pywikibot.Bot):
     Typing '?' will show you the first few bytes of the current page, helping
     you to find out what the article is about and in which other categories it
     currently is.
-
-    Important:
-     * this bot is written to work with the MonoBook skin, so make sure your bot
-       account uses this skin
 
     """
 

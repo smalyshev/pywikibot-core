@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """
 This script can move pages.
 
@@ -56,7 +56,7 @@ from pywikibot.bot import MultipleSitesBot
 # This is required for the text that is shown when you run this script
 # with the parameter -help.
 docuReplacements = {
-    '&params;':     pagegenerators.parameterHelp,
+    '&params;': pagegenerators.parameterHelp,
 }
 
 
@@ -193,7 +193,7 @@ def main(*args):
     genFactory = pagegenerators.GeneratorFactory()
 
     for arg in local_args:
-        if arg.startswith('-pairs'):
+        if arg == '-pairs' or arg.startswith('-pairs:'):
             issue_deprecation_warning(
                 '-pairs',
                 '-pairsfile',

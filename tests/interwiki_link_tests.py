@@ -1,4 +1,4 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Test Interwiki Link functionality."""
 #
 # (C) Pywikibot team, 2014
@@ -91,7 +91,7 @@ class TestInterwikiLinksToNonLocalSites(TestCase):
             link.parse)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     try:
         unittest.main()
     except SystemExit:

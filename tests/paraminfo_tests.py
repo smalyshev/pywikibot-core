@@ -1,4 +1,4 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Test confirming paraminfo contains expected values."""
 #
 # (C) Pywikibot team, 2015-2016
@@ -83,7 +83,7 @@ class MediaWikiKnownTypesTestCase(KnownTypesTestBase,
 
         known = types + ['!%s' % item for item in types]
 
-        self._check_param_values(self.site, 'query+watchlist', 'show', known)
+        self._check_param_subset(self.site, 'query+watchlist', 'show', known)
 
     def test_watchlist_type(self):
         """Test watchlist type."""
@@ -149,6 +149,9 @@ class MediaWikiKnownTypesTestCase(KnownTypesTestBase,
         self._check_param_subset(self.site, 'parse', 'contentmodel', base)
 
         if isinstance(self.site.family, WikimediaFamily):
+            # T151151 - en.wiki uninstalled Flow extension:
+            if self.site.family == 'wikipedia' and self.site.code == 'en':
+                wmf.remove('flow-board')
             self._check_param_subset(self.site, 'parse', 'contentmodel', wmf)
 
     def test_revision_deletion_type(self):
@@ -184,7 +187,7 @@ class SiteMatrixKnownTypesTestCase(KnownTypesTestBase,
 
     def test_site_matrix_state(self):
         """Test site matrix state."""
-        known = ['closed', 'private', 'fishbowl', 'all']
+        known = ['closed', 'private', 'fishbowl', 'all', 'nonglobal']
 
         self._check_param_values(self.site, 'sitematrix', 'state', known)
 
@@ -232,5 +235,5 @@ class WikibaseKnownTypesTests(KnownTypesTestBase,
         self._check_param_values(self.repo, 'wbgetclaims', 'rank', known)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     unittest.main()

@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Test tools.chars package."""
 #
 # (C) Pywikibot team, 2015
@@ -48,7 +48,7 @@ class CharsTestCase(TestCase):
         self.assertCountEqual(invalid.items(), [])
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     try:
         unittest.main()
     except SystemExit:

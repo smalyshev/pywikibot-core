@@ -11,7 +11,8 @@ Usage:
 This will work on all pages in the category "coordinates not on Wikidata" and
 will import the coordinates on these pages to Wikidata.
 
-The data from the "GeoData" extension (https://www.mediawiki.org/wiki/Extension:GeoData)
+The data from the "GeoData" extension
+(https://www.mediawiki.org/wiki/Extension:GeoData)
 is used so that extension has to be setup properly. You can look at the
 [[Special:Nearby]] page on your local Wiki to see if it's populated.
 
@@ -24,7 +25,7 @@ You can use any typical pagegenerator to provide with a list of pages:
 """
 #
 # (C) Multichill, 2014
-# (C) Pywikibot team, 2013-2015
+# (C) Pywikibot team, 2013-2016
 #
 # Distributed under the terms of MIT License.
 #
@@ -45,9 +46,7 @@ class CoordImportRobot(WikidataBot):
         """
         Constructor.
 
-        Arguments:
-            * generator    - A generator that yields Page objects.
-
+        @param generator: A generator that yields Page objects.
         """
         super(CoordImportRobot, self).__init__()
         self.generator = pagegenerators.PreloadingGenerator(generator)
@@ -59,7 +58,7 @@ class CoordImportRobot(WikidataBot):
         Check if self.prop is used as property for a qualifier.
 
         @param claims: the Wikibase claims to check in
-        @type  claims: dict
+        @type claims: dict
         @return: the first property for which self.prop
             is used as qualifier, or None if any
         @return: unicode or None

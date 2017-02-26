@@ -1,5 +1,10 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Family module for Wikisource."""
+#
+# (C) Pywikibot team, 2004-2016
+#
+# Distributed under the terms of the MIT license.
+#
 from __future__ import absolute_import, unicode_literals
 
 from pywikibot import family
@@ -24,20 +29,20 @@ class Family(family.SubdomainFamily, family.WikimediaFamily):
     def __init__(self):
         """Constructor."""
         self.languages_by_size = [
-            'en', 'de', 'ru', 'fr', 'he', 'zh', 'pl', 'es', 'it', 'ar', 'cs',
-            'pt', 'fa', 'hu', 'ml', 'ko', 'sv', 'sl', 'te', 'ro', 'gu', 'fi',
-            'sr', 'sa', 'vi', 'el', 'bn', 'ca', 'hy', 'th', 'hr', 'ja', 'nl',
-            'is', 'br', 'az', 'no', 'la', 'uk', 'vec', 'eo', 'tr', 'ta', 'be',
-            'mk', 'yi', 'id', 'da', 'et', 'li', 'as', 'bg', 'mr', 'kn', 'bs',
-            'sah', 'lt', 'gl', 'or', 'cy', 'sk', 'zh-min-nan', 'fo',
+            'en', 'pl', 'de', 'ru', 'fr', 'zh', 'he', 'es', 'it', 'ar', 'cs',
+            'pt', 'fa', 'hu', 'www', 'ml', 'ko', 'sv', 'sl', 'gu', 'bn', 'te',
+            'sr', 'ro', 'sa', 'fi', 'vi', 'el', 'ja', 'ca', 'hy', 'th', 'uk',
+            'az', 'hr', 'ta', 'nl', 'br', 'is', 'la', 'no', 'vec', 'eo', 'tr',
+            'be', 'mk', 'yi', 'id', 'da', 'et', 'as', 'li', 'mr', 'bg', 'kn',
+            'bs', 'sah', 'lt', 'or', 'gl', 'cy', 'sk', 'zh-min-nan', 'fo',
         ]
 
         super(Family, self).__init__()
 
-        # FIXME: '-' is invalid at the beginning of a hostname, and
-        # '-' is not a valid subdomain.
-        self.langs['-'] = self.domain
-        self.languages_by_size.append('-')
+        # All requests to 'mul.wikisource.org/*' are redirected to
+        # the main page, so using 'wikisource.org'
+        self.langs['mul'] = self.domain
+        self.languages_by_size.append('mul')
 
         # Global bot allowed languages on
         # https://meta.wikimedia.org/wiki/Bot_policy/Implementation#Current_implementation

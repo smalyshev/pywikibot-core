@@ -77,7 +77,7 @@ Known issues/FIXMEs (no critical issues known):
 #
 # Another rewrite by:
 # (C) Multichill 2008-2011
-# (C) Pywikibot team, 2007-2015
+# (C) Pywikibot team, 2007-2016
 #
 # Distributed under the terms of the MIT license.
 #
@@ -95,9 +95,10 @@ import pywikibot
 
 from pywikibot import pagegenerators, config, i18n
 
+from pywikibot.specialbots import UploadRobot
 from pywikibot.tools import PY2
 
-from scripts import image, upload
+from scripts import image
 
 if not PY2:
     import tkinter as Tkinter
@@ -256,7 +257,7 @@ class imageTransfer(threading.Thread):
 
     def run(self):
         """Run the bot."""
-        tosend = {'language': self.imagePage.site.language().encode('utf-8'),
+        tosend = {'language': self.imagePage.site.lang.encode('utf-8'),
                   'image': self.imagePage.title(
                       withNamespace=False).encode('utf-8'),
                   'newname': self.newname.encode('utf-8'),
@@ -282,7 +283,7 @@ class imageTransfer(threading.Thread):
 
         # I want every picture to be tagged with the bottemplate so i can check
         # my contributions later.
-        CH = ('\n\n{{BotMoveToCommons|' + self.imagePage.site.language() +
+        CH = ('\n\n{{BotMoveToCommons|' + self.imagePage.site.lang +
               '.' + self.imagePage.site.family.name +
               '|year={{subst:CURRENTYEAR}}|month={{subst:CURRENTMONTHNAME}}'
               '|day={{subst:CURRENTDAY}}}}' + CH)
@@ -292,11 +293,10 @@ class imageTransfer(threading.Thread):
                             'added categories -->', '')
             CH += u'[[Category:' + self.category + u']]'
 
-        bot = upload.UploadRobot(url=self.imagePage.fileUrl(), description=CH,
-                                 useFilename=self.newname, keepFilename=True,
-                                 verifyDescription=False, ignoreWarning=True,
-                                 targetSite=pywikibot.Site('commons',
-                                                           'commons'))
+        bot = UploadRobot(url=self.imagePage.fileUrl(), description=CH,
+                          useFilename=self.newname, keepFilename=True,
+                          verifyDescription=False, ignoreWarning=True,
+                          targetSite=pywikibot.Site('commons', 'commons'))
         bot.run()
 
         # Should check if the image actually was uploaded
@@ -307,16 +307,16 @@ class imageTransfer(threading.Thread):
             imtxt = self.imagePage.get(force=True)
 
             # Remove the move to commons templates
-            if self.imagePage.site.language() in moveToCommonsTemplate:
+            if self.imagePage.site.lang in moveToCommonsTemplate:
                 for moveTemplate in moveToCommonsTemplate[
-                        self.imagePage.site.language()]:
+                        self.imagePage.site.lang]:
                     imtxt = re.sub(u'(?i)\{\{' + moveTemplate + u'[^\}]*\}\}',
                                    u'', imtxt)
 
             # add {{NowCommons}}
-            if self.imagePage.site.language() in nowCommonsTemplate:
+            if self.imagePage.site.lang in nowCommonsTemplate:
                 addTemplate = nowCommonsTemplate[
-                    self.imagePage.site.language()] % self.newname
+                    self.imagePage.site.lang] % self.newname
             else:
                 addTemplate = nowCommonsTemplate['_default'] % self.newname
 

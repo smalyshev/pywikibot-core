@@ -1,4 +1,4 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Test plural module."""
 #
 # (C) Pywikibot team, 2015
@@ -68,7 +68,7 @@ class TestPluralRules(TestCase):
     max_num = 1000
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     try:
         unittest.main()
     except SystemExit:

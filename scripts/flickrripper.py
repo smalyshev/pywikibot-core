@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """
 Tool to copy a flickr stream to Commons.
 
@@ -25,7 +25,7 @@ Todo:
 """
 #
 # (C) Multichill, 2009
-# (C) Pywikibot team, 2009-2014
+# (C) Pywikibot team, 2009-2016
 #
 # Distributed under the terms of the MIT license.
 #
@@ -59,12 +59,12 @@ import pywikibot
 from pywikibot import config, textlib
 from pywikibot.comms.http import fetch
 
-from scripts import upload
+from pywikibot.specialbots import UploadRobot
 
 try:
     from pywikibot.userinterfaces.gui import Tkdialog
 except ImportError as _tk_error:
-    Tkdialog = None
+    Tkdialog = _tk_error
 
 
 flickr_allowed_license = {
@@ -304,7 +304,7 @@ def processPhoto(flickr, photo_id=u'', flickrreview=False, reviewer=u'',
                                                 override, addCategory,
                                                 removeCategories)
             # pywikibot.output(photoDescription)
-            if Tkdialog is not None and not autonomous:
+            if not isinstance(Tkdialog, ImportError) and not autonomous:
                 try:
                     (newPhotoDescription, newFilename, skip) = Tkdialog(
                         photoDescription, photo, filename).show_dialog()
@@ -315,7 +315,7 @@ def processPhoto(flickr, photo_id=u'', flickrreview=False, reviewer=u'',
             elif not autonomous:
                 pywikibot.warning('Switching to autonomous mode because GUI '
                                   'interface cannot be used')
-                pywikibot.warning(_tk_error)
+                pywikibot.warning(Tkdialog)
                 autonomous = True
             if autonomous:
                 newPhotoDescription = photoDescription
@@ -330,11 +330,11 @@ def processPhoto(flickr, photo_id=u'', flickrreview=False, reviewer=u'',
             # Would be nice to check before I upload if the file is already at Commons
             # Not that important for this program, but maybe for derived programs
             if not skip:
-                bot = upload.UploadRobot(photoUrl,
-                                         description=newPhotoDescription,
-                                         useFilename=newFilename,
-                                         keepFilename=True,
-                                         verifyDescription=False)
+                bot = UploadRobot(photoUrl,
+                                  description=newPhotoDescription,
+                                  useFilename=newFilename,
+                                  keepFilename=True,
+                                  verifyDescription=False)
                 bot.upload_image(debug=False)
                 return 1
     else:

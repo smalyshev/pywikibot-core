@@ -1,4 +1,4 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """SPARQL Query interface."""
 #
 # Distributed under the terms of the MIT license.
@@ -13,6 +13,7 @@ else:
     from urllib2 import quote
 
 from pywikibot.comms import http
+from pywikibot.tools import UnicodeMixin, py2_encode_utf_8
 
 WIKIDATA = 'http://query.wikidata.org/sparql'
 DEFAULT_HEADERS = {'cache-control': 'no-cache',
@@ -64,13 +65,17 @@ class SparqlQuery(object):
             for row in data['results']['bindings']:
                 values = {}
                 for var in qvars:
-                    if full_data:
-                        if row[var]['type'] not in VALUE_TYPES:
-                            raise ValueError('Unknown type: %s' % row[var]['type'])
-                        valtype = VALUE_TYPES[row[var]['type']]
-                        values[var] = valtype(row[var], entity_url=self.entity_url)
+                    if var in row:
+                        if full_data:
+                            if row[var]['type'] not in VALUE_TYPES:
+                                raise ValueError('Unknown type: %s' % row[var]['type'])
+                            valtype = VALUE_TYPES[row[var]['type']]
+                            values[var] = valtype(row[var], entity_url=self.entity_url)
+                        else:
+                            values[var] = row[var]['value']
                     else:
-                        values[var] = row[var]['value']
+                        # var is not available (OPTIONAL is probably used)
+                        values[var] = None
                 result.append(values)
             return result
         else:
@@ -103,24 +108,38 @@ class SparqlQuery(object):
         data = self.query(query, headers=headers)
         return data['boolean']
 
-    def get_items(self, query, item_name='item'):
+    def get_items(self, query, item_name='item', result_type=set):
         """
-        Retrieve set of items which satisfy given query.
+        Retrieve items which satisfy given query.
 
         Items are returned as Wikibase IDs.
 
         @param query: Query string. Must contain ?{item_name} as one of the projected values.
         @param item_name: Name of the value to extract
-        @return: Set of item ids, e.g. Q1234
-        @rtype: set
+        @param result_type: type of the iterable in which
+              SPARQL results are stored (default set)
+        @type result_type: iterable
+        @return: item ids, e.g. Q1234
+        @rtype: same as result_type
         """
         res = self.select(query, full_data=True)
         if res:
-            return set([r[item_name].getID() for r in res])
-        return set()
+            return result_type(r[item_name].getID() for r in res)
+        return result_type()
 
 
-class URI(object):
+class SparqlNode(UnicodeMixin):
+    """Base class for SPARQL nodes."""
+
+    def __init__(self, value):
+        """Create a SparqlNode."""
+        self.value = value
+
+    def __unicode__(self):
+        return self.value
+
+
+class URI(SparqlNode):
     """Representation of URI result type."""
 
     def __init__(self, data, entity_url, **kwargs):
@@ -129,7 +148,7 @@ class URI(object):
 
         @type data: dict
         """
-        self.value = data.get('value')
+        super(URI, self).__init__(data.get('value'))
         self.entity_url = entity_url
 
     def getID(self):
@@ -144,14 +163,12 @@ class URI(object):
         else:
             return None
 
-    def __str__(self):
-        return self.value
-
+    @py2_encode_utf_8
     def __repr__(self):
         return '<' + self.value + '>'
 
 
-class Literal(object):
+class Literal(SparqlNode):
     """Representation of RDF literal result type."""
 
     def __init__(self, data, **kwargs):
@@ -160,13 +177,11 @@ class Literal(object):
 
         @type data: dict
         """
+        super(Literal, self).__init__(data.get('value'))
         self.type = data.get('datatype')
         self.language = data.get('xml:lang')
-        self.value = data.get('value')
 
-    def __str__(self):
-        return self.value
-
+    @py2_encode_utf_8
     def __repr__(self):
         if self.type:
             return self.value + '^^' + self.type
@@ -175,7 +190,7 @@ class Literal(object):
         return self.value
 
 
-class Bnode(object):
+class Bnode(SparqlNode):
     """Representation of blank node."""
 
     def __init__(self, data, **kwargs):
@@ -184,12 +199,11 @@ class Bnode(object):
 
         @type data: dict
         """
-        self.value = data['value']
+        super(Bnode, self).__init__(data.get('value'))
 
-    def __str__(self):
-        return self.value
-
+    @py2_encode_utf_8
     def __repr__(self):
         return "_:" + self.value
+
 
 VALUE_TYPES = {'uri': URI, 'literal': Literal, 'bnode': Bnode}

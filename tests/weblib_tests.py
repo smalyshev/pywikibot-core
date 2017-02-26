@@ -1,4 +1,4 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Weblib test module."""
 #
 # (C) Pywikibot team, 2014-2015
@@ -50,7 +50,7 @@ class TestInternetArchive(DeprecationTestCase):
         parsed = urlparse(archivedversion)
         self.assertIn(parsed.scheme, [u'http', u'https'])
         self.assertEqual(parsed.netloc, u'web.archive.org')
-        self.assertTrue(parsed.path.strip('/').endswith('www.google.com'), parsed.path)
+        self.assertTrue(parsed.path.strip('/').endswith('google.com'), parsed.path)
 
     def testInternetArchiveOlder(self):
         """Test Internet Archive for https://google.com as of June 2006."""
@@ -58,7 +58,7 @@ class TestInternetArchive(DeprecationTestCase):
         parsed = urlparse(archivedversion)
         self.assertIn(parsed.scheme, [u'http', u'https'])
         self.assertEqual(parsed.netloc, u'web.archive.org')
-        self.assertTrue(parsed.path.strip('/').endswith('www.google.com'), parsed.path)
+        self.assertTrue(parsed.path.strip('/').endswith('google.com'), parsed.path)
         self.assertIn('200606', parsed.path)
 
 
@@ -77,13 +77,14 @@ class TestWebCite(DeprecationTestCase):
         self.assertOneDeprecation()
         return archivedversion
 
+    @unittest.expectedFailure  # See T110640
     def testWebCiteOlder(self):
         """Test WebCite for https://google.com as of January 2013."""
         archivedversion = self._get_archive_url('https://google.com', '20130101')
         self.assertEqual(archivedversion, 'http://www.webcitation.org/6DHSeh2L0')
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     try:
         unittest.main()
     except SystemExit:

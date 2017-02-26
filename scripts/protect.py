@@ -63,7 +63,7 @@ from pywikibot.tools.formatter import color_format
 # This is required for the text that is shown when you run this script
 # with the parameter -help.
 docuReplacements = {
-    '&params;':     pagegenerators.parameterHelp,
+    '&params;': pagegenerators.parameterHelp,
 }
 
 
@@ -235,8 +235,8 @@ def main(*args):
                                                    protection_levels)
         # set the default value for all
         # None (not the string 'none') will be ignored by Site.protect()
-        combined_protections = dict([
-            (p_type, default_level) for p_type in protection_types])
+        combined_protections = dict(
+            (p_type, default_level) for p_type in protection_types)
         for p_type, level in protections.items():
             level = check_protection_level(p_type, level, protection_levels,
                                            default_level)

@@ -1,4 +1,4 @@
-# -*- coding: utf-8  -*-
+# -*- coding: utf-8 -*-
 """Tests for the Tk UI."""
 #
 # (C) Pywikibot team, 2008-2014
@@ -73,7 +73,7 @@ class TestTkinter(DefaultSiteTestCase):
         assert v is None
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     try:
         unittest.main()
     except SystemExit:

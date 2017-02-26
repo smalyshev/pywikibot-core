@@ -9,8 +9,8 @@ some filters and adds the result.
 
 The following command line parameters are supported:
 
--onlyfilter     Don't use Commonsense to get categories, just filter the current
-                categories
+-onlyfilter     Don't use Commonsense to get categories, just filter the
+                current categories
 
 -onlyuncat      Only work on uncategorized images. Will prevent the bot from
                 working on an image multiple times.
@@ -29,7 +29,7 @@ The following command line parameters are supported:
 # (C) Multichill, 2008-2011
 # (C) Pywikibot team, 2008-2014
 #
-#   Distributed under the terms of the MIT license.
+# Distributed under the terms of the MIT license.
 #
 from __future__ import absolute_import, unicode_literals
 

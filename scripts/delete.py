@@ -31,12 +31,12 @@ Furthermore, the following command line parameters are supported:
 -orphansonly:     Specified namespaces. Separate multiple namespace
                   numbers or names with commas.
                   Examples:
-                  -ns:0,2,4
-                  -ns:Help,MediaWiki
+                  -orphansonly:0,2,4
+                  -orphansonly:Help,MediaWiki
 
                   Note that Main ns can be indicated either with a 0 or a ',':
-                  -ns:0,1
-                  -ns:,Talk
+                  -orphansonly:0,1
+                  -orphansonly:,Talk
 
 Usage:
 
@@ -73,7 +73,7 @@ from pywikibot.tools import islice_with_ellipsis
 # This is required for the text that is shown when you run this script
 # with the parameter -help.
 docuReplacements = {
-    '&params;':     pagegenerators.parameterHelp,
+    '&params;': pagegenerators.parameterHelp,
 }
 
 
@@ -119,7 +119,7 @@ class PageWithRefs(Page):
         Returns a set with namespaces where a ref to page is present.
 
         @param namespaces: Namespace to check
-        @type  namespaces: iterable of Namespace objects
+        @type namespaces: iterable of Namespace objects
         @rtype set: namespaces where a ref to page is present
         """
         if namespaces is None:
@@ -137,9 +137,9 @@ class DeletionRobot(MultipleSitesBot, CurrentPageBot):
         Constructor.
 
         @param generator: the pages to work on
-        @type  generator: iterable
+        @type generator: iterable
         @param summary: the reason for the (un)deletion
-        @type  summary: unicode
+        @type summary: unicode
         """
         self.availableOptions.update({
             'undelete': False,
@@ -274,7 +274,8 @@ def main(*args):
                     summary = i18n.twtranslate(mysite, 'delete-from-category',
                                                {'page': pageName})
                 elif arg.startswith('-links'):
-                    summary = i18n.twtranslate(mysite, un + 'delete-linked-pages',
+                    summary = i18n.twtranslate(mysite,
+                                               un + 'delete-linked-pages',
                                                {'page': pageName})
                 elif arg.startswith('-ref'):
                     summary = i18n.twtranslate(mysite, 'delete-referring-pages',
@@ -291,7 +292,8 @@ def main(*args):
     if generator:
         if summary is None:
             summary = pywikibot.input(u'Enter a reason for the %sdeletion:'
-                                      % ['', 'un'][options.get('undelete', False)])
+                                      % ['', 'un'][options.get('undelete',
+                                                               False)])
         bot = DeletionRobot(generator, summary, **options)
         bot.run()
         return True
