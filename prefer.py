@@ -19,12 +19,14 @@ if TEST:
     START_TIME = 'P355'
     END_TIME = 'P356'
     DEATH_DATE = 'P570'
+    ABOLISHED = 'P576'
     start_end_props = ['P141']
     point_props = ['P1082']
 else:
     START_TIME = 'P580'
     END_TIME = 'P582'
     DEATH_DATE = 'P570'
+    ABOLISHED = 'P576'
     POINT_IN_TIME = 'P585'
     site = pywikibot.Site("wikidata", "wikidata")
 
@@ -297,7 +299,10 @@ for prop in start_end_props:
             continue
 
         if DEATH_DATE in item.claims:
-            log_item(logpage, itemID, "Death date specified")
+            log_item(logpage, itemID, "Death date specified, skipping")
+            continue
+        if ABOLISHED in item.claims:
+            log_item(logpage, itemID, "Abolished date specified, skipping")
             continue
 
         bestRanked = []
