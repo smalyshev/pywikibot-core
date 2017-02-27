@@ -33,9 +33,20 @@ badprops = []
 items = sparql_query.get_items(QUANT, item_name='p')
 
 sandboxes = set(['Q13406268', 'Q15397819', 'Q4115189'])
+# Mixed units - for these, mixing is OK
+# maximum capacity (P1083)
+# total produced (P1092)
+# quantity (P1114)
+# numeric value (P1181)
+# collection or exhibition size (P1436) 
+# personal best (P2415)
+# number of parts of a work of art (P2635)
+mixed_units = set(['P1083', 'P1092', 'P1181', 'P1114', 'P1436', 'P2415', 'P2635'])
 
 # report inconsistent properties
 def found_inconsistent(prop, result):
+    if prop in mixed_units:
+        return
     print("Inconsistent units for %s" % prop)
     badprops.append(prop)
     logpage = pywikibot.Page(site, LOGPAGE+"/"+prop)
