@@ -14,9 +14,10 @@ SELECT ?unit (count(?x) as ?count) WHERE {
 ORDER BY DESC(?count)
 """
 GETUNITS = """
-SELECT ?id WHERE {
+SELECT ?id ?idLabel WHERE {
     ?id p:%s/psv:%s [ wikibase:quantityUnit wd:%s ]
     FILTER(?id != wd:Q4115189 && ?id != wd:Q13406268 && ?id != wd:Q15397819)
+    SERVICE wikibase:label { bd:serviceParam wikibase:language "en" . }
 }
 """
 SPARQL = """
@@ -41,13 +42,32 @@ sandboxes = set(['Q13406268', 'Q15397819', 'Q4115189'])
 # collection or exhibition size (P1436) 
 # personal best (P2415)
 # number of parts of a work of art (P2635)
-mixed_units = set(['P1083', 'P1092', 'P1181', 'P1114', 'P1436', 'P2415', 'P2635'])
+# number of participants (P1132)
+mixed_units = set(['P1083', 'P1092', 'P1181', 'P1114', 'P1436', 'P2415', 'P2635', 'P1132'])
+# Properties with known anomalous units
+allowed_anomaly = {
+    'P1110': set(['http://www.wikidata.org/entity/Q6256', 'http://www.wikidata.org/entity/Q7275']),
+    'P1971': set(['http://www.wikidata.org/entity/Q177232', 'http://www.wikidata.org/entity/Q308194']),
+    'P2103': set(['http://www.wikidata.org/entity/Q28997']),
+    'P2124': set(['http://www.wikidata.org/entity/Q37226', 'http://www.wikidata.org/entity/Q43229', 'http://www.wikidata.org/entity/Q515']),
+    'P2196': set(['http://www.wikidata.org/entity/Q21094885']),
+    'P1122': set(['http://www.wikidata.org/entity/Q12503', 'http://www.wikidata.org/entity/Q743139'])
+}
 
 # report inconsistent properties
 def found_inconsistent(prop, result):
     if prop in mixed_units:
         return
     print("Inconsistent units for %s" % prop)
+    if prop in allowed_anomaly:
+        count = 1 # This is for Q199 itself
+        for unit in result:
+            if unit['unit'] in allowed_anomaly[prop]:
+                count = count + 1
+        if count == len(result):
+        # All anomalies are accounted for
+            print("All anomalies accounted for in %s" % prop)
+            return
     badprops.append(prop)
     logpage = pywikibot.Page(site, LOGPAGE+"/"+prop)
     text = "{{P|" + prop + "}}\n\n{| class=\"wikitable\"\n"
