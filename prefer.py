@@ -189,6 +189,7 @@ P1352: ranking
 P1538: number of households
 P1539: female population
 P1540: male population
+P1831: electorate
 P2046: area
 P2403: total assets
 """
@@ -200,7 +201,7 @@ if not TEST:
                'P1075', 'P1308', 'P1435', 'P1448', 'P1454', 'P1476', 'P1705', 'P1813', 'P1998', 'P2978'
     ]
     point_props = [
-               'P348', 'P1082', 'P1114', 'P1352', 'P1538', 'P1539', 'P1540', 'P2046', 'P1833', 'P2403', 'P2124'
+               'P348', 'P1082', 'P1114', 'P1352', 'P1538', 'P1539', 'P1540', 'P1831', 'P2046', 'P1833', 'P2403', 'P2124'
     ]
 
 # Check if this item is ok to process
