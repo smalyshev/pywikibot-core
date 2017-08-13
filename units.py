@@ -2,6 +2,11 @@ import pywikibot
 from pywikibot.data.sparql import SparqlQuery
 from urllib.parse import quote
 
+"""
+Get the list of units with anomalies, such as props having
+both united and unitless quantities.
+"""
+
 QUANT = """
 SELECT ?p WHERE {
   ?p a wikibase:Property; wikibase:propertyType wikibase:Quantity .
@@ -82,7 +87,7 @@ def found_inconsistent(prop, result):
             "|| {{Q|" + unitName + "}} || " + \
             unit['count'] + "||" + \
             SPARQL % quote(query) + "\n"
-        if unit['unit'] == 'Q199':
+        if unitName == 'Q199':
             counts[prop] = unit['count']
     text = text + "|}\n"
     text = text + "[http://query.wikidata.org/#%s Try again]\n" % quote(CHECKUNITS % (prop, prop))
