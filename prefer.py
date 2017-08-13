@@ -4,6 +4,7 @@ from pywikibot.data.sparql import SparqlQuery
 import requests
 import datetime
 import re
+import jdcal
 
 # Are we testing or are we for real?
 TEST = False
@@ -31,6 +32,8 @@ else:
     site = pywikibot.Site("wikidata", "wikidata")
 
 STANDARD_CALENDAR = 'http://www.wikidata.org/entity/Q1985727'
+JULIAN_CALENDAR = 'http://www.wikidata.org/entity/Q1985786'
+
 LOGPAGE = "User:PreferentialBot/Log/"
 qregex = re.compile('{{Q|(Q\d+)}}')
 repo = site.data_repository()
@@ -201,7 +204,8 @@ if not TEST:
                'P1075', 'P1308', 'P1435', 'P1448', 'P1454', 'P1476', 'P1705', 'P1813', 'P1998', 'P2978'
     ]
     point_props = [
-               'P348', 'P1082', 'P1114', 'P1352', 'P1538', 'P1539', 'P1540', 'P1831', 'P2046', 'P1833', 'P2403', 'P2124'
+#               'P348', 'P1082', 'P1114', 'P1352', 'P1538', 'P1539', 'P1540', 'P1831', 'P2046', 'P1833', 'P2403', 'P2124'
+        'P1538'
     ]
 
 # Check if this item is ok to process
@@ -224,6 +228,15 @@ def check_item(prop, item):
         print("Already have preference for %s on %s, skip" % (prop, itemID))
         return False
     return True
+
+def convert_calendar(value, to_cal):
+    if value.calendarmodel == JULIAN_CALENDAR and to_cal == STANDARD_CALENDAR:
+        if value.year and value.month and value.day and value.precision >= 11:
+    # Convert Julian to Standard
+            jday = jdcal.gcal2jd(value.year, value.month, value.day)
+            jdate = jdcal.jd2jcal(*jday)
+            return pywikibot.WbTime(year=jdate[0], month=jdate[1], day=jdate[2], precision=value.precision, calendarmodel=STANDARD_CALENDAR)
+    return value
 
 ########## Point in time
 
@@ -253,17 +266,24 @@ for prop in point_props:
         for statement in item.claims[prop]:
             if POINT_IN_TIME not in statement.qualifiers:
                 log_item(logpage, itemID, "Missing point-in-time qualifier")
+                maxClaim = None
                 break
             q = statement.qualifiers[POINT_IN_TIME][0]
             if q.getSnakType() != 'value':
                 log_item(logpage, itemID, "Invalid point-in-time value type")
+                maxClaim = None
                 break
             value = q.getTarget()
             if value.calendarmodel != repo.calendarmodel():
+            # Try to convert
+                value = convert_calendar(value, repo.calendarmodel())
+            if value.calendarmodel != repo.calendarmodel():
                 log_item(logpage, itemID, "Non-standard calendar: %s" % value.calendarmodel)
+                maxClaim = None
                 break
             if not (datetime.MINYEAR <= value.year <= datetime.MAXYEAR):
                 log_item(logpage, itemID, "Date out of range")
+                maxClaim = None
                 break
             #print(value)
             vdate = datetime.date(value.year, value.month or 1, value.day or 1)
