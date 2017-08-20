@@ -160,13 +160,16 @@ P94: coat of arms image
 P115: home venue
 P118: league
 P123: publisher
+P126: maintained by
 P138: named after
 P154: logo image
 P159: headquarters location
 P169: chief executive officer
 P176: manufacturer
+P237: coat of arms
 P286: head coach
 P289: vessel class
+P300: ISO 3166-2 code
 P449: original network
 P484: IMA Number, broad sense
 P488: chairperson
@@ -208,9 +211,9 @@ P2403: total assets
 
 if not TEST:
     start_end_props = [
-               'P41', 'P26', 'P6', 'P17', 'P35', 'P36', 'P94', 'P115', 'P118', 'P123', 'P138', 'P154', 'P159', 'P169', 'P176',
-               'P289', 'P449', 'P484', 'P488', 'P505', 'P598', 'P605', 'P625', 'P708', 'P749', 'P879', 'P964', 'P969', 'P1037',
-               'P1075', 'P1308', 'P1435', 'P1448', 'P1454', 'P1476', 'P1705', 'P1813', 'P1998', 'P2978'
+               'P41', 'P26', 'P6', 'P17', 'P35', 'P36', 'P94', 'P115', 'P118', 'P123', 'P126', 'P138', 'P154', 'P159', 'P169',
+               'P176', 'P237', 'P289', 'P300', 'P449', 'P484', 'P488', 'P505', 'P598', 'P605', 'P625', 'P708', 'P749', 'P879',
+               'P964', 'P969', 'P1037', 'P1075', 'P1308', 'P1435', 'P1448', 'P1454', 'P1476', 'P1705', 'P1813', 'P1998', 'P2978'
     ]
     point_props = [
                'P348', 'P1082', 'P1114', 'P1352', 'P1538', 'P1539', 'P1540', 'P1831', 'P2046', 'P1833', 'P2403', 'P2124'
@@ -318,7 +321,7 @@ for prop in point_props:
                 result = maxClaim.changeRank('preferred')
     if logpage.modifiedByBot:
         logpage.save("log for "+prop)
-        
+
 ########### Start/end pairs
 
 for prop in start_end_props:
