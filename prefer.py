@@ -5,6 +5,7 @@ import requests
 import datetime
 import re
 import jdcal
+import sys
 
 # Are we testing or are we for real?
 TEST = False
@@ -59,6 +60,10 @@ SELECT DISTINCT ?s WHERE {
 # and it's not a dead person
   OPTIONAL { ?s wdt:P570 ?d }
   FILTER(!bound(?d))
+# and not abolished
+  OPTIONAL { ?s wdt:P576 ?ab }
+  FILTER(!bound(?ab))
+# st2 is normal rank
   ?st2 wikibase:rank wikibase:NormalRank.
   %s
 } LIMIT 10
@@ -82,6 +87,10 @@ SELECT DISTINCT ?s WHERE {
 # and it's not a dead person
   OPTIONAL { ?s wdt:P570 ?d }
   FILTER(!bound(?d))
+# and not abolished
+  OPTIONAL { ?s wdt:P576 ?ab }
+  FILTER(!bound(?ab))
+# st2 is normal rank and normal is best
   ?st2 wikibase:rank wikibase:NormalRank.
   ?st2 a wikibase:BestRank .
   %s
@@ -206,6 +215,16 @@ if not TEST:
     point_props = [
                'P348', 'P1082', 'P1114', 'P1352', 'P1538', 'P1539', 'P1540', 'P1831', 'P2046', 'P1833', 'P2403', 'P2124'
     ]
+
+if len(sys.argv) > 1:
+    prop = sys.argv[1]
+    if prop in start_end_props:
+        start_end_props = [prop]
+        point_props = []
+    elif prop in point_props:
+        start_end_props = []
+        point_props = [prop]
+
 
 # Check if this item is ok to process
 def check_item(prop, item):
