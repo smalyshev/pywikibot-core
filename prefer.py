@@ -316,7 +316,9 @@ for prop in point_props:
             print("Marking %s on %s:%s as preferred " % (maxClaim.snak, itemID, prop))
             if COMMIT:
                 result = maxClaim.changeRank('preferred')
-
+    if logpage.modifiedByBot:
+        logpage.save("log for "+prop)
+        
 ########### Start/end pairs
 
 for prop in start_end_props:
