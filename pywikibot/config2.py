@@ -794,7 +794,7 @@ persistent_http = False
 # script.
 # You may assign either a tuple of two int or float values for connection and
 # read timeout, or a single value for both in a tuple (since requests 2.4.0).
-socket_timeout = (6.05, 45)
+socket_timeout = 60
 
 
 # ############# COSMETIC CHANGES SETTINGS ##############
