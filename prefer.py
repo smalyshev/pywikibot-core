@@ -63,6 +63,9 @@ SELECT DISTINCT ?s WHERE {
 # and not abolished
   OPTIONAL { ?s wdt:P576 ?ab }
   FILTER(!bound(?ab))
+# and no end time
+  OPTIONAL { ?s wdt:P582 ?et }
+  FILTER(!bound(?et))
 # st2 is normal rank
   ?st2 wikibase:rank wikibase:NormalRank.
   %s
@@ -206,7 +209,13 @@ P1539: female population
 P1540: male population
 P1831: electorate
 P2046: area
+P2124: member count
+P2196: students count
 P2403: total assets
+P2139: total revenue
+P2295: net profit
+P3362: operating income
+P4080: number of houses
 """
 
 if not TEST:
@@ -216,7 +225,8 @@ if not TEST:
                'P964', 'P969', 'P1037', 'P1075', 'P1308', 'P1435', 'P1448', 'P1454', 'P1476', 'P1705', 'P1813', 'P1998', 'P2978'
     ]
     point_props = [
-               'P348', 'P1082', 'P1114', 'P1352', 'P1538', 'P1539', 'P1540', 'P1831', 'P2046', 'P1833', 'P2403', 'P2124'
+               'P348', 'P1082', 'P1114', 'P1352', 'P1538', 'P1539', 'P1540', 'P1831', 'P2046', 'P1833',  'P2124', 'P2196', 'P2403',
+               'P2139', 'P2295', 'P3362', 'P4080'
     ]
 
 if len(sys.argv) > 1:
@@ -228,11 +238,20 @@ if len(sys.argv) > 1:
         start_end_props = []
         point_props = [prop]
 
-
 # Check if this item is ok to process
-def check_item(prop, item):
+def check_item(prop, item, itemID):
     if prop not in item.claims:
         print("Hmm, no %s for %s" % (prop, itemID))
+        return False
+
+    if DEATH_DATE in item.claims:
+        log_item(logpage, itemID, "Death date specified, skipping")
+        return False
+    if ABOLISHED in item.claims:
+        log_item(logpage, itemID, "Abolished date specified, skipping")
+        return False
+    if END_TIME in item.claims:
+        log_item(logpage, itemID, "End date specified, skipping")
         return False
 
     if len(item.claims[prop]) < 2:
@@ -284,7 +303,7 @@ for prop in point_props:
         item = pywikibot.ItemPage(repo, itemID)
         item.get()
 
-        if not check_item(prop, item):
+        if not check_item(prop, item, itemID):
             continue
         maxDate = datetime.date(datetime.MINYEAR, 1, 1)
         maxClaim = None
@@ -311,6 +330,10 @@ for prop in point_props:
                 maxClaim = None
                 break
             #print(value)
+            if value.month == 2 and value.day > 29:
+                value.day = 29
+            if value.month in [4, 6, 9, 11] and value.day > 30:
+                value.day = 30
             vdate = datetime.date(value.year, value.month or 1, value.day or 1)
             if vdate > maxDate:
                 maxDate = vdate
@@ -343,14 +366,7 @@ for prop in start_end_props:
         item = pywikibot.ItemPage(repo, itemID)
         item.get()
 
-        if not check_item(prop, item):
-            continue
-
-        if DEATH_DATE in item.claims:
-            log_item(logpage, itemID, "Death date specified, skipping")
-            continue
-        if ABOLISHED in item.claims:
-            log_item(logpage, itemID, "Abolished date specified, skipping")
+        if not check_item(prop, item, itemID):
             continue
 
         bestRanked = []
