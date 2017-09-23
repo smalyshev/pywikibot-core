@@ -19,8 +19,9 @@ SELECT ?unit (count(?x) as ?count) WHERE {
 ORDER BY DESC(?count)
 """
 GETUNITS = """
-SELECT ?id ?idLabel WHERE {
-    ?id p:%s/psv:%s [ wikibase:quantityUnit wd:%s ]
+SELECT ?id ?idLabel ?type ?typeLabel WHERE {
+    ?id p:%s/psv:%s [ wikibase:quantityUnit wd:%s ] .
+    OPTIONAL { ?id wdt:P31 ?type }
     FILTER(?id != wd:Q4115189 && ?id != wd:Q13406268 && ?id != wd:Q15397819)
     SERVICE wikibase:label { bd:serviceParam wikibase:language "en" . }
 }
@@ -45,7 +46,7 @@ sandboxes = set(['Q13406268', 'Q15397819', 'Q4115189'])
 # total produced (P1092)
 # quantity (P1114)
 # numeric value (P1181)
-# collection or exhibition size (P1436) 
+# collection or exhibition size (P1436)
 # personal best (P2415)
 # number of parts of a work of art (P2635)
 # number of participants (P1132)
