@@ -203,7 +203,6 @@ point in time:
 P348: software version
 P1082: population
 P1114: quantity
-P1352: ranking
 P1538: number of households
 P1539: female population
 P1540: male population
@@ -225,7 +224,7 @@ if not TEST:
                'P964', 'P969', 'P1037', 'P1075', 'P1308', 'P1435', 'P1448', 'P1454', 'P1476', 'P1705', 'P1813', 'P1998', 'P2978'
     ]
     point_props = [
-               'P348', 'P1082', 'P1114', 'P1352', 'P1538', 'P1539', 'P1540', 'P1831', 'P2046', 'P1833',  'P2124', 'P2196', 'P2403',
+               'P348', 'P1082', 'P1114', 'P1538', 'P1539', 'P1540', 'P1831', 'P2046', 'P1833',  'P2124', 'P2196', 'P2403',
                'P2139', 'P2295', 'P3362', 'P4080'
     ]
 
