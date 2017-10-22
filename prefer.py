@@ -97,7 +97,7 @@ SELECT DISTINCT ?s WHERE {
   ?st2 wikibase:rank wikibase:NormalRank.
   ?st2 a wikibase:BestRank .
   %s
-} LIMIT 10
+} LIMIT 50
 """
 
 sparql_query = SparqlQuery()
