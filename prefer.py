@@ -6,6 +6,7 @@ import datetime
 import re
 import jdcal
 import sys
+from optparse import OptionParser
 
 # Are we testing or are we for real?
 TEST = False
@@ -39,6 +40,23 @@ LOGPAGE = "User:PreferentialBot/Log/"
 qregex = re.compile('{{Q|(Q\d+)}}')
 repo = site.data_repository()
 
+parser = OptionParser()
+parser.add_option("-p", "--prop", dest="prop",
+                  help="Only work on this property", metavar="P123")
+parser.add_option("-l", "--limit", dest="limit",
+                  help="LIMIT in SPARQL query", default=10, type="int", metavar="NUM")
+parser.add_option("-f", "--force", dest="force", action="store_true",
+                  help="Force run even if there are too many bad ones. Will not record errors to log.")
+parser.add_option("-w", "--wait", dest="wait",
+                  help="Bot wait period", type="int", metavar="NUM")
+parser.add_option("-b", "--bad", dest="bad",
+                  help="How many bad items to allow?", default=30, type="int", metavar="NUM")
+
+(options, args) = parser.parse_args()
+
+if options.wait:
+    site.throttle.setDelays(writedelay=options.wait)
+
 START_END_QUERY = """
 PREFIX q: <http://www.wikidata.org/prop/qualifier/>
 SELECT DISTINCT ?s WHERE {
@@ -69,7 +87,7 @@ SELECT DISTINCT ?s WHERE {
 # st2 is normal rank
   ?st2 wikibase:rank wikibase:NormalRank.
   %s
-} LIMIT 10
+} LIMIT %d
 """
 
 POINT_QUERY = """
@@ -97,7 +115,7 @@ SELECT DISTINCT ?s WHERE {
   ?st2 wikibase:rank wikibase:NormalRank.
   ?st2 a wikibase:BestRank .
   %s
-} LIMIT 50
+} LIMIT %d
 """
 
 sparql_query = SparqlQuery()
@@ -111,7 +129,7 @@ def get_items(query, prop, bad_ids=[]):
     else:
         id_filter = ''
 
-    dquery = query % (prop, id_filter)
+    dquery = query % (prop, id_filter, options.limit)
 #    print(dquery)
 
     return sparql_query.get_items(dquery, item_name="s")
@@ -219,6 +237,7 @@ P4080: number of houses
 
 if not TEST:
     start_end_props = [
+               'P131',
                'P41', 'P26', 'P6', 'P17', 'P35', 'P36', 'P94', 'P115', 'P118', 'P123', 'P126', 'P138', 'P154', 'P159', 'P169',
                'P176', 'P237', 'P289', 'P300', 'P449', 'P484', 'P488', 'P505', 'P598', 'P605', 'P625', 'P708', 'P749', 'P879',
                'P964', 'P969', 'P1037', 'P1075', 'P1308', 'P1435', 'P1448', 'P1454', 'P1476', 'P1705', 'P1813', 'P1998', 'P2978'
@@ -228,14 +247,17 @@ if not TEST:
                'P2139', 'P2295', 'P3362', 'P4080'
     ]
 
-if len(sys.argv) > 1:
-    prop = sys.argv[1]
+if options.prop:
+    prop = options.prop
     if prop in start_end_props:
         start_end_props = [prop]
         point_props = []
     elif prop in point_props:
         start_end_props = []
         point_props = [prop]
+    else:
+        raise Exception("Unknown option " + prop)
+    print("Doing only %s" % prop)
 
 # Check if this item is ok to process
 def check_item(prop, item, itemID):
@@ -286,8 +308,8 @@ def convert_calendar(value, to_cal):
 for prop in point_props:
     logpage = pywikibot.Page(site, LOGPAGE+prop)
     baditems = load_page(logpage)
-    if len(baditems) > 30:
-        print("Too many bad items for %s, skipping" % prop)
+    if not options.force and len(baditems) > options.bad:
+        print("Too many bad items for %s (%d > %d), skipping" % (prop, len(baditems), options.bad))
         continue
     if TEST:
         items = ["Q10402"]
@@ -341,7 +363,7 @@ for prop in point_props:
             print("Marking %s on %s:%s as preferred " % (maxClaim.snak, itemID, prop))
             if COMMIT:
                 result = maxClaim.changeRank('preferred')
-    if logpage.modifiedByBot:
+    if not options.force and logpage.modifiedByBot:
         logpage.save("log for "+prop)
 
 ########### Start/end pairs
@@ -349,8 +371,8 @@ for prop in point_props:
 for prop in start_end_props:
     logpage = pywikibot.Page(site, LOGPAGE+prop)
     baditems = load_page(logpage)
-    if len(baditems) > 30:
-        print("Too many bad items for %s, skipping" % prop)
+    if not options.force and len(baditems) > options.bad:
+        print("Too many bad items for %s (%d > %d), skipping" % (prop, len(baditems), options.bad))
         continue
     if TEST:
         items = ["Q826"]
@@ -407,6 +429,6 @@ for prop in start_end_props:
             print("Marking %s on %s:%s as preferred " % (statement.snak, itemID, prop))
             if COMMIT:
                 result = statement.changeRank('preferred')
-    if logpage.modifiedByBot:
+    if logpage.modifiedByBot and not options.force:
         logpage.save("log for "+prop)
 
