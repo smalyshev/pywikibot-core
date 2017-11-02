@@ -85,7 +85,7 @@ SELECT DISTINCT ?s WHERE {
   OPTIONAL { ?s wdt:P582 ?et }
   FILTER(!bound(?et))
 # st2 is normal rank
-  ?st2 wikibase:rank wikibase:NormalRank.
+#  ?st2 wikibase:rank wikibase:NormalRank.
   %s
 } LIMIT %d
 """
@@ -112,8 +112,8 @@ SELECT DISTINCT ?s WHERE {
   OPTIONAL { ?s wdt:P576 ?ab }
   FILTER(!bound(?ab))
 # st2 is normal rank and normal is best
-  ?st2 wikibase:rank wikibase:NormalRank.
-  ?st2 a wikibase:BestRank .
+#  ?st2 wikibase:rank wikibase:NormalRank.
+#  ?st2 a wikibase:BestRank .
   %s
 } LIMIT %d
 """
