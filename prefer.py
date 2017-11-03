@@ -51,6 +51,8 @@ parser.add_option("-w", "--wait", dest="wait",
                   help="Bot wait period", type="int", metavar="NUM")
 parser.add_option("-b", "--bad", dest="bad",
                   help="How many bad items to allow?", default=30, type="int", metavar="NUM")
+parser.add_option("-v", "--verbose", dest="verbose", action="store_true",
+                  help="Print SPARQL queries being run")
 
 (options, args) = parser.parse_args()
 
@@ -103,7 +105,7 @@ SELECT DISTINCT ?s WHERE {
 # Another claim
   ?s ?prop ?st2 .
   FILTER(?st2 != ?st)
-# with an end time
+# with a point-in-time time
   ?st2 q:P585 ?t3 .
 # and it's not a dead person
   OPTIONAL { ?s wdt:P570 ?d }
@@ -130,7 +132,8 @@ def get_items(query, prop, bad_ids=[]):
         id_filter = ''
 
     dquery = query % (prop, id_filter, options.limit)
-#    print(dquery)
+    if options.verbose:
+        print(dquery)
 
     return sparql_query.get_items(dquery, item_name="s")
 
