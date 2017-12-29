@@ -450,20 +450,25 @@ OLD_IMDB_QUERY = """
 """
 items = sparql_query.get_items(OLD_IMDB_QUERY % options.limit, item_name="item")
 print("%d old IMDB ids found" % len(items))
+#print(items)
 for itemID in items:
     item = pywikibot.ItemPage(repo, itemID)
     item.get()
-#    print(itemID)
+#   print(itemID)
     for statement in item.claims['P345']:
-        if statement.getSnakType() != 'value':
+        target = statement.getTarget()
+        if not target.startswith('ch'):
+            print(itemID, target)
             continue
         if statement.rank != 'normal':
+            print(itemID, statement.rank)
+            continue
+        if statement.getSnakType() != 'value':
+            print(itemID, statement.getSnakType())
             continue
         # Must have reason for deprecation
         if 'P2241' not in statement.qualifiers:
+            print(itemID, statement.qualifiers.keys())
             continue
-        target = statement.getTarget()
-        if not target.startswith('ch'):
-            continue
-#        print(itemID, target)
+        print(itemID, target)
         statement.changeRank('deprecated', summary="Deprecate old IMDB ID")
