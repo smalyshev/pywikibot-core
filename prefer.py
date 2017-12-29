@@ -435,3 +435,35 @@ for prop in start_end_props:
     if logpage.modifiedByBot and not options.force:
         logpage.save("log for "+prop)
 
+###### Old & New Countries ######
+
+###### Old Format IMDB IDs ######
+OLD_IMDB_QUERY = """
+		SELECT ?item
+		WHERE
+		{
+			?item p:P345 [ ps:P345 ?value; wikibase:rank ?rank ]
+			FILTER( REGEX( STR( ?value ), "^(ch)\\\\d{7}$" )  ) .
+            FILTER( ?rank != wikibase:DeprecatedRank )
+			FILTER( ?item NOT IN ( wd:Q4115189, wd:Q13406268, wd:Q15397819 ) ) .
+		} LIMIT %d
+"""
+items = sparql_query.get_items(OLD_IMDB_QUERY % options.limit, item_name="item")
+print("%d old IMDB ids found" % len(items))
+for itemID in items:
+    item = pywikibot.ItemPage(repo, itemID)
+    item.get()
+#    print(itemID)
+    for statement in item.claims['P345']:
+        if statement.getSnakType() != 'value':
+            continue
+        if statement.rank != 'normal':
+            continue
+        # Must have reason for deprecation
+        if 'P2241' not in statement.qualifiers:
+            continue
+        target = statement.getTarget()
+        if not target.startswith('ch'):
+            continue
+#        print(itemID, target)
+        statement.changeRank('deprecated', summary="Deprecate old IMDB ID")
