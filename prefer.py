@@ -458,10 +458,8 @@ for itemID in items:
     for statement in item.claims['P345']:
         target = statement.getTarget()
         if not target.startswith('ch'):
-            print(itemID, target)
             continue
-        if statement.rank != 'normal':
-            print(itemID, statement.rank)
+        if statement.rank == 'deprecated':
             continue
         if statement.getSnakType() != 'value':
             print(itemID, statement.getSnakType())
