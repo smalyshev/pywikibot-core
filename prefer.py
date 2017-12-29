@@ -436,8 +436,38 @@ for prop in start_end_props:
         logpage.save("log for "+prop)
 
 ###### Old & New Countries ######
+# See https://www.wikidata.org/wiki/Wikidata:Bot_requests#Set_preferred_rank
+COUNTRIES_QUERY = """
+SELECT ?item ?currentcountry
+{
+	?item wdt:P17 wd:Q200464 .
+    ?item wdt:P17 ?currentcountry .
+    FILTER ( ?currentcountry != wd:Q200464 )
+    FILTER NOT EXISTS { ?item wdt:P576 [] }
+    FILTER (?item != wd:Q10323306 )
+} LIMIT %d
+"""
+countries = sparql_query.select(COUNTRIES_QUERY % options.limit, full_data=True)
+print("%d old countries found" % len(countries))
+for cnt in countries:
+    itemID = cnt['item'].getID()
+    countryID = cnt['currentcountry'].getID()
+    item = pywikibot.ItemPage(repo, itemID)
+    item.get()
+#    print(itemID)
+    for statement in item.claims['P17']:
+        if statement.getSnakType() != 'value':
+            continue
+        if statement.rank != 'normal':
+            continue
+        target = statement.getTarget().title()
+        if target != countryID:
+            continue
+        print(itemID, countryID)
+        statement.changeRank('preferred', summary="Set current country to preferred")
 
 ###### Old Format IMDB IDs ######
+# See https://www.wikidata.org/wiki/Wikidata:Bot_requests#Set_deprecated_rank
 OLD_IMDB_QUERY = """
 		SELECT ?item
 		WHERE
