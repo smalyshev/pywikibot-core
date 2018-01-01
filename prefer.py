@@ -23,8 +23,6 @@ if TEST:
     END_TIME = 'P356'
     DEATH_DATE = 'P570'
     ABOLISHED = 'P576'
-    start_end_props = ['P141']
-    point_props = ['P1082']
 else:
     START_TIME = 'P580'
     END_TIME = 'P582'
@@ -123,9 +121,9 @@ SELECT DISTINCT ?s WHERE {
 sparql_query = SparqlQuery()
 
 def get_items(query, prop, bad_ids=[]):
-# Query asks for items with normal-ranked statement with start date
-# and no end date, more than one statement on the same property
-# and not date of death for this item
+    # Query asks for items with normal-ranked statement with start date
+    # and no end date, more than one statement on the same property
+    # and not date of death for this item
     if len(bad_ids) > 0:
         id_filter = "MINUS { VALUES ?s { %s } }" % ' '.join(["wd:"+q for q in bad_ids if q ])
     else:
@@ -249,6 +247,9 @@ if not TEST:
                'P348', 'P1082', 'P1114', 'P1538', 'P1539', 'P1540', 'P1831', 'P2046', 'P1833',  'P2124', 'P2196', 'P2403',
                'P2139', 'P2295', 'P3362', 'P4080'
     ]
+else:
+    start_end_props = ['P141']
+    point_props = ['P1082']
 
 if options.prop:
     prop = options.prop
@@ -440,7 +441,7 @@ for prop in start_end_props:
 COUNTRIES_QUERY = """
 SELECT ?item ?currentcountry
 {
-	?item wdt:P17 wd:Q200464 .
+    ?item wdt:P17 wd:Q200464 .
     ?item wdt:P17 ?currentcountry .
     FILTER ( ?currentcountry != wd:Q200464 )
     FILTER NOT EXISTS { ?item wdt:P576 [] }
@@ -469,14 +470,14 @@ for cnt in countries:
 ###### Old Format IMDB IDs ######
 # See https://www.wikidata.org/wiki/Wikidata:Bot_requests#Set_deprecated_rank
 OLD_IMDB_QUERY = """
-		SELECT ?item
-		WHERE
-		{
-			?item p:P345 [ ps:P345 ?value; wikibase:rank ?rank ]
-			FILTER( REGEX( STR( ?value ), "^(ch)\\\\d{7}$" )  ) .
+        SELECT ?item
+        WHERE
+        {
+            ?item p:P345 [ ps:P345 ?value; wikibase:rank ?rank ]
+            FILTER( REGEX( STR( ?value ), "^(ch)\\\\d{7}$" )  ) .
             FILTER( ?rank != wikibase:DeprecatedRank )
-			FILTER( ?item NOT IN ( wd:Q4115189, wd:Q13406268, wd:Q15397819 ) ) .
-		} LIMIT %d
+            FILTER( ?item NOT IN ( wd:Q4115189, wd:Q13406268, wd:Q15397819 ) ) .
+        } LIMIT %d
 """
 items = sparql_query.get_items(OLD_IMDB_QUERY % options.limit, item_name="item")
 print("%d old IMDB ids found" % len(items))
