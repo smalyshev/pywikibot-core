@@ -171,6 +171,7 @@ P195: collection
 P551: residence
 P579: IMA status and/or rank
 P1448: official name
+P1435: heritage status
 """
 """
 P6: head of government
@@ -209,7 +210,6 @@ P969: located at street address
 P1037: manager/director
 P1075: rector
 P1308: officeholder
-P1435: heritage status
 P1454: legal form
 P1476: title
 P1705: native label
@@ -241,7 +241,7 @@ if not TEST:
     start_end_props = [
                'P26', 'P6', 'P17', 'P35', 'P36', 'P41', 'P94', 'P115', 'P118', 'P123', 'P126', 'P138', 'P154', 'P159', 'P169',
                'P176', 'P237', 'P289', 'P300', 'P449', 'P484', 'P488', 'P505', 'P598', 'P605', 'P625', 'P708', 'P749', 'P879',
-               'P964', 'P969', 'P1037', 'P1075', 'P1308', 'P1435', 'P1454', 'P1476', 'P1705', 'P1813', 'P1998', 'P2978', 'P3615',
+               'P964', 'P969', 'P1037', 'P1075', 'P1308', 'P1454', 'P1476', 'P1705', 'P1813', 'P1998', 'P2978', 'P3615',
     ]
     point_props = [
                'P348', 'P1082', 'P1114', 'P1538', 'P1539', 'P1540', 'P1831', 'P2046', 'P1833',  'P2124', 'P2196', 'P2403',
