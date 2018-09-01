@@ -241,6 +241,7 @@ P2663: common equity tier 1 capital ratio (CETI)
 P2769: budget
 P3362: operating income
 P4080: number of houses
+P4841: total fertility rate
 """
 
 if not TEST:
@@ -252,7 +253,7 @@ if not TEST:
     ]
     point_props = [
                'P348', 'P1082', 'P1087', 'P1114', 'P1538', 'P1539', 'P1540', 'P1831', 'P2046', 'P1833',  'P2124',
-               'P2196', 'P2403', 'P2139', 'P2295', 'P2573', 'P2663', 'P2769', 'P3362', 'P4080'
+               'P2196', 'P2403', 'P2139', 'P2295', 'P2573', 'P2663', 'P2769', 'P3362', 'P4080', 'P4841'
     ]
 else:
     start_end_props = ['P141']
