@@ -225,6 +225,7 @@ P3615: Vision of Britain unit ID
 point in time:
 P348: software version
 P1082: population
+P1087: Elo rating
 P1114: quantity
 P1538: number of households
 P1539: female population
@@ -251,8 +252,8 @@ if not TEST:
                 'P1705', 'P1813', 'P1998', 'P3615',
     ]
     point_props = [
-               'P348', 'P1082', 'P1114', 'P1538', 'P1539', 'P1540', 'P1831', 'P2046', 'P1833',  'P2124', 'P2196',
-               'P2403', 'P2139', 'P2295', 'P2573', 'P2663', 'P2769', 'P3362', 'P4080'
+               'P348', 'P1082', 'P1087', 'P1114', 'P1538', 'P1539', 'P1540', 'P1831', 'P2046', 'P1833',  'P2124',
+               'P2196', 'P2403', 'P2139', 'P2295', 'P2573', 'P2663', 'P2769', 'P3362', 'P4080'
     ]
 else:
     start_end_props = ['P141']
