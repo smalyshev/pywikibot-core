@@ -206,7 +206,6 @@ P669: located on street
 P605: NUTS code
 P625: coordinate location
 P708: diocese
-P734: family name
 P749: parent company
 P879: pennant number
 P964: Austrian municipality key
@@ -249,7 +248,7 @@ if not TEST:
     start_end_props = [
                'P26', 'P6', 'P17', 'P35', 'P36', 'P41', 'P94', 'P115', 'P118', 'P123', 'P126', 'P138', 'P154', 'P159',
                 'P169', 'P176', 'P237', 'P241', 'P289', 'P300', 'P449', 'P484', 'P488', 'P505', 'P598', 'P605', 'P625',
-                'P669', 'P708', 'P734', 'P749', 'P879', 'P964', 'P969', 'P1037', 'P1075', 'P1308', 'P1454', 'P1476',
+                'P669', 'P708', 'P749', 'P879', 'P964', 'P969', 'P1037', 'P1075', 'P1308', 'P1454', 'P1476',
                 'P1705', 'P1813', 'P1998'
     ]
     point_props = [
