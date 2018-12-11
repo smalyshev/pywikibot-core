@@ -305,8 +305,7 @@ def convert_calendar(value, to_cal):
     if value.calendarmodel == JULIAN_CALENDAR and to_cal == STANDARD_CALENDAR:
         if value.precision < 10:
             # No sense to convert for year-precision and lower
-            value.calendarmodel = STANDARD_CALENDAR
-            return value
+            return pywikibot.WbTime(year=value.year, month=1, day=1, precision=value.precision, calendarmodel=STANDARD_CALENDAR)
         if value.year and value.month and value.day and value.precision >= 11:
     # Convert Julian to Standard
             jday = jdcal.gcal2jd(value.year, value.month, value.day)
