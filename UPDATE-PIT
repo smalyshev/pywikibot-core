@@ -1,7 +1,7 @@
 == For point-in-time ==
 
 . Run pit-candidates.py START END  (START is from MAX in PIT-props file)
-  END from https://www.wikidata.org/w/index.php?title=Special:ListProperties/&limit=500&offset=3500
+  END from https://www.wikidata.org/w/index.php?title=Special:ListProperties/&limit=500&offset=5000
 . Put potential matches into PIT-props
 . Re-scan "no data" ones:
 .. pbpaste | cut -d' ' -f 1 > nodata
