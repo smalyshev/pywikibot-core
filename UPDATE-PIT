@@ -1,0 +1,19 @@
+== For point-in-time ==
+
+. Run pit-candidates.py START END  (START is from MAX in PIT-props file)
+  END from https://www.wikidata.org/w/index.php?title=Special:ListProperties/&limit=500&offset=3500
+. Put potential matches into PIT-props
+. Re-scan "no data" ones:
+.. pbpaste | cut -d' ' -f 1 > nodata
+.. python3 pwb.py myscripts/check_empty.py nodata 
+
+
+== For start-end ==
+. Run st-candidates.py START END  (START is from MAX in props file)
+. Put potential ones into props
+. Re-scan "no data" ones
+
+=== Adding ===
+. Add to prefer.py (both arrays and docs)
+. Add to https://www.wikidata.org/wiki/User:PreferentialBot
+. Add to https://www.wikidata.org/wiki/User:PreferentialBot/Log

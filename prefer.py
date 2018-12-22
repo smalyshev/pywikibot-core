@@ -33,6 +33,7 @@ else:
 
 STANDARD_CALENDAR = 'http://www.wikidata.org/entity/Q1985727'
 JULIAN_CALENDAR = 'http://www.wikidata.org/entity/Q1985786'
+SANDBOX_ITEMS = ['Q4115189']
 
 LOGPAGE = "User:PreferentialBot/Log/"
 qregex = re.compile('{{Q|(Q\d+)}}')
@@ -140,13 +141,15 @@ def load_page(page):
     return set(qregex.findall(page.text))
 
 def log_item(page, item, reason):
+    if item in SANDBOX_ITEMS:
+        # Ignore sandbox items
+        return
     print("%s on %s" %(reason, item))
     if page.text.find(item+"}}") != -1:
         # already there
         return
     page.text = page.text.strip() + "\n* {{Q|%s}} %s" % (item, reason)
     page.modifiedByBot = True
-    pass
 
 """
 Test entities for P6:
@@ -330,7 +333,9 @@ for prop in point_props:
         if itemID in baditems:
             print("Known bad item %s, skip" % itemID)
             continue
-
+        if itemID in SANDBOX_ITEMS:
+            print(f"Skipping sandbox {item}")
+            continue
         item = pywikibot.ItemPage(repo, itemID)
         item.get()
 
