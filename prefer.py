@@ -335,7 +335,7 @@ for prop in point_props:
             print("Known bad item %s, skip" % itemID)
             continue
         if itemID in SANDBOX_ITEMS:
-            print(f"Skipping sandbox {item}")
+            print("Skipping sandbox " + item)
             continue
         item = pywikibot.ItemPage(repo, itemID)
         item.get()
