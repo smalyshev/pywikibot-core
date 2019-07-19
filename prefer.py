@@ -225,6 +225,7 @@ P1998: UCI code
 """
 point in time:
 P348: software version
+P1081: Human Development Index
 P1082: population (!!)
 P1114: quantity
 P1538: number of households
@@ -233,16 +234,20 @@ P1540: male population
 P1831: electorate
 P2046: area
 P2124: member count
+P2131: nominal GDP
+P2132: nominal GDP per capita
+P2134: total reserves
+P2139: total revenue
 P2196: students count
 P2250: life expectancy
-P2403: total assets
-P2131: nominal GDP    
-P2139: total revenue
 P2295: net profit
+P2299: PPP GDP per capita
+P2403: total assets
 P2573: number of out of school children
 P2663: common equity tier 1 capital ratio (CETI)
 P2769: budget
 P3362: operating income
+P4010: GDP (PPP)
 P4080: number of houses
 P4841: total fertility rate
 """
@@ -255,8 +260,9 @@ if not TEST:
                 'P1705', 'P1813', 'P1998', 
     ]
     point_props = [
-               'P348', 'P1082', 'P1114', 'P1538', 'P1539', 'P1540', 'P1831', 'P2046', 'P1833',  'P2124', 'P2131',
-               'P2139', 'P2196', 'P2250', 'P2295', 'P2403', 'P2573', 'P2663', 'P2769', 'P3362', 'P4080', 'P4841' 
+               'P348',  'P1081', 'P1082', 'P1114', 'P1279', 'P1538', 'P1539', 'P1540', 'P1831', 'P2046', 'P1833', 'P2124', 
+               'P2131', 'P2132', 'P2134', 'P2139', 'P2196', 'P2250', 'P2295', 'P2299', 'P2403', 'P2573', 'P2663', 'P2769', 
+               'P3362', 'P4010', 'P4080', 'P4841',
     ]
 else:
     start_end_props = ['P141']
